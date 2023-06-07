@@ -86,17 +86,13 @@ func (s *L1Client) L1BlockRefByLabel(ctx context.Context, label eth.BlockLabel) 
 		if label == eth.Safe {
 			info, err = s.InfoByLabel(ctx, eth.Unsafe)
 			if err == nil {
-				safeBlockNum := info.NumberU64() - info.NumberU64()%eth.DefaultEpoch
+				safeBlockNum := info.NumberU64() - eth.DefaultEpoch
 				info, err = s.InfoByNumber(ctx, safeBlockNum)
 			}
 		} else if label == eth.Finalized {
 			info, err = s.InfoByLabel(ctx, eth.Unsafe)
 			if err == nil {
-				safeBlockNum := info.NumberU64() - info.NumberU64()%eth.DefaultEpoch
-				finalizedBlockNum := safeBlockNum
-				if safeBlockNum > eth.DefaultEpoch {
-					finalizedBlockNum = safeBlockNum - eth.DefaultEpoch
-				}
+				finalizedBlockNum := info.NumberU64() - eth.DefaultEpoch
 				info, err = s.InfoByNumber(ctx, finalizedBlockNum)
 			}
 		}

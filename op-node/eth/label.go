@@ -17,7 +17,7 @@ const (
 	// - L2: Derived chain tip from finalized L1 data
 	Finalized = "finalized"
 
-	DefaultEpoch = 10
+	DefaultEpoch = 6
 )
 
 func (label BlockLabel) Arg() any { return string(label) }
