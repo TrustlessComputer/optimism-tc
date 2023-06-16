@@ -2,7 +2,7 @@
 cd /app
 
 echo "TCHOST" $TCHOST
-
+echo 'DA_RPC' $DA_RPC
 
 if [ "$P2PPORT" == "" ]; then
     P2PPORT=9003
@@ -34,6 +34,7 @@ if [ "$MASTER" == "1" ]; then
     --l1.trustrpc=true \
     --l1.rpckind=basic \
     --l1.epoch-poll-interval=10s \
+    --l1-da-rpc=$DA_RPC \
     --log.level trace 2>&1 | cronolog $PWD/resources/logs/%Y-%m-%d.log
 else
   ./bin/op-node \
@@ -53,6 +54,7 @@ else
     --l1.trustrpc=true \
     --l1.rpckind=basic \
     --l1.epoch-poll-interval=10s \
+    --l1-da-rpc=$DA_RPC \
     --log.level trace 2>&1 | cronolog $PWD/resources/logs/%Y-%m-%d.log
 fi
 
