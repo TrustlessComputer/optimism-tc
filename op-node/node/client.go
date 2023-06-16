@@ -33,6 +33,7 @@ type L1EndpointSetup interface {
 	// The results of the RPC client may be trusted for faster processing, or strictly validated.
 	// The kind of the RPC may be non-basic, to optimize RPC usage.
 	Setup(ctx context.Context, log log.Logger, rollupCfg *rollup.Config) (cl client.RPC, rpcCfg *sources.L1ClientConfig, err error)
+	SetupDA(ctx context.Context, log log.Logger, rollupCfg *rollup.Config) (cl client.RPC, rpcCfg *sources.L1ClientConfig, err error)
 	Check() error
 }
 
@@ -131,6 +132,7 @@ func (cfg *PreparedL2SyncEndpoint) Check() error {
 
 type L1EndpointConfig struct {
 	L1NodeAddr string // Address of L1 User JSON-RPC endpoint to use (eth namespace required)
+	L1DAAddr   string
 
 	// L1TrustRPC: if we trust the L1 RPC we do not have to validate L1 response contents like headers
 	// against block hashes, or cached transaction sender addresses.
@@ -182,6 +184,28 @@ func (cfg *L1EndpointConfig) Setup(ctx context.Context, log log.Logger, rollupCf
 	rpcCfg := sources.L1ClientDefaultConfig(rollupCfg, cfg.L1TrustRPC, cfg.L1RPCKind)
 	rpcCfg.MaxRequestsPerBatch = cfg.BatchSize
 	return l1Node, rpcCfg, nil
+}
+
+func (cfg *L1EndpointConfig) SetupDA(ctx context.Context, log log.Logger, rollupCfg *rollup.Config) (client.RPC, *sources.L1ClientConfig, error) {
+	opts := []client.RPCOption{
+		client.WithHttpPollInterval(cfg.HttpPollInterval),
+		client.WithDialBackoff(10),
+	}
+	if cfg.RateLimit != 0 {
+		opts = append(opts, client.WithRateLimit(cfg.RateLimit, cfg.BatchSize))
+	}
+
+	l1Node, err := client.NewRPC(ctx, log, cfg.L1DAAddr, opts...)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to dial L1 address (%s): %w", cfg.L1DAAddr, err)
+	}
+	rpcCfg := sources.L1ClientDefaultConfig(rollupCfg, cfg.L1TrustRPC, cfg.L1RPCKind)
+	rpcCfg.MaxRequestsPerBatch = cfg.BatchSize
+	return l1Node, rpcCfg, nil
+}
+
+func (p *PreparedL1Endpoint) SetupDA(ctx context.Context, log log.Logger, rollupCfg *rollup.Config) (client.RPC, *sources.L1ClientConfig, error) {
+	return p.Client, sources.L1ClientDefaultConfig(rollupCfg, p.TrustRPC, p.RPCProviderKind), nil
 }
 
 // PreparedL1Endpoint enables testing with an in-process pre-setup RPC connection to L1

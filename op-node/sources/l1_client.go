@@ -53,21 +53,27 @@ func L1ClientDefaultConfig(config *rollup.Config, trustRPC bool, kind RPCProvide
 // (i.e. to verify all returned contents against corresponding block hashes).
 type L1Client struct {
 	*EthClient
-
+	EthDAClient *EthClient
 	// cache L1BlockRef by hash
 	// common.Hash -> eth.L1BlockRef
 	l1BlockRefsCache *caching.LRUCache
 }
 
 // NewL1Client wraps a RPC with bindings to fetch L1 data, while logging errors, tracking metrics (optional), and caching.
-func NewL1Client(client client.RPC, log log.Logger, metrics caching.Metrics, config *L1ClientConfig) (*L1Client, error) {
+func NewL1Client(client client.RPC, clientDA client.RPC, log log.Logger, metrics caching.Metrics, config *L1ClientConfig) (*L1Client, error) {
 	ethClient, err := NewEthClient(client, log, metrics, &config.EthClientConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	ethDAClient, err := NewEthClient(clientDA, log, metrics, &config.EthClientConfig)
 	if err != nil {
 		return nil, err
 	}
 
 	return &L1Client{
 		EthClient:        ethClient,
+		EthDAClient:      ethDAClient,
 		l1BlockRefsCache: caching.NewLRUCache(metrics, "blockrefs", config.L1BlockRefsCacheSize),
 	}, nil
 }
@@ -130,4 +136,24 @@ func (s *L1Client) L1BlockRefByHash(ctx context.Context, hash common.Hash) (eth.
 	ref := eth.InfoToL1BlockRef(info)
 	s.l1BlockRefsCache.Add(ref.Hash, ref)
 	return ref, nil
+}
+
+func (s *L1Client) DADataByTxHash(ctx context.Context, hash common.Hash) (eth.Data, uint64, error) {
+	tx, err := s.EthDAClient.TransactionByHash(ctx, hash)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to fetch DA transaction by hash %s", hash.String())
+	}
+	receipt, err := s.EthDAClient.TransactionReceipt(ctx, hash)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to fetch DA transaction receipt by hash %s", hash.String())
+	}
+	blockNumber, err := s.EthDAClient.BlockNumber(ctx)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to fetch DA block number")
+	}
+
+	confirmations := blockNumber - receipt.BlockNumber.Uint64()
+	fmt.Println("tx", hash, "confirmations", confirmations, blockNumber, receipt.BlockNumber.Uint64())
+
+	return tx.Data(), confirmations, nil
 }

@@ -79,7 +79,7 @@ func (d *Sequencer) StartBuildingBlock(ctx context.Context) error {
 
 	fetchCtx, cancel := context.WithTimeout(ctx, time.Second*20)
 	defer cancel()
-
+	fmt.Println("debug PreparePayloadAttributes l1Origin", l1Origin.Number, l1Origin.Hash.String())
 	attrs, err := d.attrBuilder.PreparePayloadAttributes(fetchCtx, l2Head, l1Origin.ID())
 	if err != nil {
 		return err

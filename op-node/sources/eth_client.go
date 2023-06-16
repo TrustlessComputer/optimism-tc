@@ -283,6 +283,45 @@ func (s *EthClient) payloadCall(ctx context.Context, method string, id rpcBlockI
 	return payload, nil
 }
 
+func (s *EthClient) txCall(ctx context.Context, method string, hash common.Hash) (*types.Transaction, error) {
+	var tx *types.Transaction
+	err := s.client.CallContext(ctx, &tx, method, hash)
+	if err != nil {
+		return nil, err
+	}
+	if tx == nil {
+		return nil, ethereum.NotFound
+	}
+
+	s.transactionsCache.Add(hash, []*types.Transaction{tx})
+	return tx, nil
+}
+
+func (s *EthClient) receiptCall(ctx context.Context, method string, hash common.Hash) (*types.Receipt, error) {
+	var txr *types.Receipt
+	err := s.client.CallContext(ctx, &txr, method, hash)
+	if err != nil {
+		return nil, err
+	}
+	if txr == nil {
+		return nil, ethereum.NotFound
+	}
+
+	return txr, nil
+}
+
+func (s *EthClient) blockNumberCall(ctx context.Context, method string) (uint64, error) {
+	bnum := big.NewInt(0)
+	var temp string
+	err := s.client.CallContext(ctx, &temp, method)
+	bnum.SetString(temp, 16)
+	if err != nil {
+		return 0, err
+	}
+
+	return bnum.Uint64(), nil
+}
+
 // ChainID fetches the chain id of the internal RPC.
 func (s *EthClient) ChainID(ctx context.Context) (*big.Int, error) {
 	var id hexutil.Big
@@ -342,6 +381,18 @@ func (s *EthClient) PayloadByNumber(ctx context.Context, number uint64) (*eth.Ex
 
 func (s *EthClient) PayloadByLabel(ctx context.Context, label eth.BlockLabel) (*eth.ExecutionPayload, error) {
 	return s.payloadCall(ctx, "eth_getBlockByNumber", label)
+}
+
+func (s *EthClient) TransactionByHash(ctx context.Context, hash common.Hash) (*types.Transaction, error) {
+	return s.txCall(ctx, "eth_getTransactionByHash", hash)
+}
+
+func (s *EthClient) TransactionReceipt(ctx context.Context, hash common.Hash) (*types.Receipt, error) {
+	return s.receiptCall(ctx, "eth_getTransactionReceipt", hash)
+}
+
+func (s *EthClient) BlockNumber(ctx context.Context) (uint64, error) {
+	return s.blockNumberCall(ctx, "eth_blockNumber")
 }
 
 // FetchReceipts returns a block info and all of the receipts associated with transactions in the block.

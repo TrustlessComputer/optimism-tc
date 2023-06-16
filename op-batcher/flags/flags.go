@@ -75,12 +75,19 @@ var (
 	}
 	// Legacy Flags
 	SequencerHDPathFlag = txmgr.SequencerHDPathFlag
+
+	L1EthDARpcFlag = cli.StringFlag{
+		Name:   "l1-da-rpc",
+		Usage:  "HTTP DA provider URL for L1",
+		EnvVar: opservice.PrefixEnvVar(EnvVarPrefix, "L1_DA_RPC"),
+	}
 )
 
 var requiredFlags = []cli.Flag{
 	L1EthRpcFlag,
 	L2EthRpcFlag,
 	RollupRpcFlag,
+	L1EthDARpcFlag,
 }
 
 var optionalFlags = []cli.Flag{

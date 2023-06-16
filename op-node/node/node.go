@@ -121,8 +121,13 @@ func (n *OpNode) initL1(ctx context.Context, cfg *Config) error {
 		return fmt.Errorf("failed to get L1 RPC client: %w", err)
 	}
 
+	l1DA, _, err := cfg.L1.SetupDA(ctx, n.log, &cfg.Rollup)
+	if err != nil {
+		return fmt.Errorf("failed to get L1 RPC client: %w", err)
+	}
+
 	n.l1Source, err = sources.NewL1Client(
-		client.NewInstrumentedRPC(l1Node, n.metrics), n.log, n.metrics.L1SourceCache, rpcCfg)
+		client.NewInstrumentedRPC(l1Node, n.metrics), l1DA, n.log, n.metrics.L1SourceCache, rpcCfg)
 	if err != nil {
 		return fmt.Errorf("failed to create L1 source: %w", err)
 	}

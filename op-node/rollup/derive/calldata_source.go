@@ -15,12 +15,18 @@ import (
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
 )
 
+const (
+	HashLength         = 32
+	NumConfirmationsDA = 30
+)
+
 type DataIter interface {
 	Next(ctx context.Context) (eth.Data, error)
 }
 
 type L1TransactionFetcher interface {
 	InfoAndTxsByHash(ctx context.Context, hash common.Hash) (eth.BlockInfo, types.Transactions, error)
+	DADataByTxHash(ctx context.Context, hash common.Hash) (eth.Data, uint64, error)
 }
 
 // DataSourceFactory readers raw transactions from a given block & then filters for
@@ -71,9 +77,48 @@ func NewDataSource(ctx context.Context, log log.Logger, cfg *rollup.Config, fetc
 			batcherAddr: batcherAddr,
 		}
 	} else {
+		var resultData []eth.Data
+		l1data := DataFromEVMTransactions(cfg, batcherAddr, txs, log.New("origin", block))
+		for _, data := range l1data {
+			txHash := data[1:]
+			if len(txHash) != HashLength {
+				return &DataSource{
+					open:        false,
+					id:          block,
+					cfg:         cfg,
+					fetcher:     fetcher,
+					log:         log,
+					batcherAddr: batcherAddr,
+				}
+			}
+			if data, numConfirmations, err := fetcher.DADataByTxHash(ctx, common.BytesToHash(txHash)); err == nil {
+				if numConfirmations < NumConfirmationsDA {
+					return &DataSource{
+						open:        false,
+						id:          block,
+						cfg:         cfg,
+						fetcher:     fetcher,
+						log:         log,
+						batcherAddr: batcherAddr,
+					}
+				}
+				log.Info("retrieved data from calldata source", "data", data, "len", len(data))
+				resultData = append(resultData, data)
+			} else {
+				return &DataSource{
+					open:        false,
+					id:          block,
+					cfg:         cfg,
+					fetcher:     fetcher,
+					log:         log,
+					batcherAddr: batcherAddr,
+				}
+			}
+		}
+
 		return &DataSource{
 			open: true,
-			data: DataFromEVMTransactions(cfg, batcherAddr, txs, log.New("origin", block)),
+			data: resultData,
 		}
 	}
 }
@@ -85,7 +130,25 @@ func (ds *DataSource) Next(ctx context.Context) (eth.Data, error) {
 	if !ds.open {
 		if _, txs, err := ds.fetcher.InfoAndTxsByHash(ctx, ds.id.Hash); err == nil {
 			ds.open = true
-			ds.data = DataFromEVMTransactions(ds.cfg, ds.batcherAddr, txs, log.New("origin", ds.id))
+			var resultData []eth.Data
+			l1data := DataFromEVMTransactions(ds.cfg, ds.batcherAddr, txs, log.New("origin", ds.id))
+			for _, data := range l1data {
+				txHash := data[1:]
+				if len(txHash) != HashLength {
+					return nil, NewTemporaryError(fmt.Errorf("invalid hash in calldata source %v", txHash))
+				}
+				if data, numConfirmations, err := ds.fetcher.DADataByTxHash(ctx, common.BytesToHash(txHash)); err == nil {
+					if numConfirmations < NumConfirmationsDA {
+						return nil, NewTemporaryError(fmt.Errorf("not enough confirmations for data tx %v", txHash))
+					}
+
+					log.Info("retrieved data from calldata source", "data", data, "len", len(data))
+					resultData = append(resultData, data)
+				} else {
+					return nil, NewTemporaryError(fmt.Errorf("failed to retrieve data from calldata source: %w", err))
+				}
+			}
+			ds.data = resultData
 		} else if errors.Is(err, ethereum.NotFound) {
 			return nil, NewResetError(fmt.Errorf("failed to open calldata source: %w", err))
 		} else {

@@ -20,12 +20,14 @@ import (
 )
 
 type Config struct {
-	log        log.Logger
-	metr       metrics.Metricer
-	L1Client   *ethclient.Client
-	L2Client   *ethclient.Client
-	RollupNode *sources.RollupClient
-	TxManager  txmgr.TxManager
+	log         log.Logger
+	metr        metrics.Metricer
+	L1Client    *ethclient.Client
+	L1DAClient  *ethclient.Client
+	L2Client    *ethclient.Client
+	RollupNode  *sources.RollupClient
+	TxManager   txmgr.TxManager
+	TxDAManager txmgr.TxManager
 
 	NetworkTimeout         time.Duration
 	PollInterval           time.Duration
@@ -51,7 +53,8 @@ func (c *Config) Check() error {
 
 type CLIConfig struct {
 	// L1EthRpc is the HTTP provider URL for L1.
-	L1EthRpc string
+	L1EthRpc   string
+	L1EthDARpc string
 
 	// L2EthRpc is the HTTP provider URL for the L2 execution engine.
 	L2EthRpc string
@@ -88,6 +91,7 @@ type CLIConfig struct {
 	Stopped bool
 
 	TxMgrConfig      txmgr.CLIConfig
+	TxDAMgrConfig    txmgr.CLIConfig
 	RPCConfig        rpc.CLIConfig
 	LogConfig        oplog.CLIConfig
 	MetricsConfig    opmetrics.CLIConfig
@@ -120,6 +124,7 @@ func NewConfig(ctx *cli.Context) CLIConfig {
 		/* Required Flags */
 		L1EthRpc:        ctx.GlobalString(flags.L1EthRpcFlag.Name),
 		L2EthRpc:        ctx.GlobalString(flags.L2EthRpcFlag.Name),
+		L1EthDARpc:      ctx.GlobalString(flags.L1EthDARpcFlag.Name),
 		RollupRpc:       ctx.GlobalString(flags.RollupRpcFlag.Name),
 		SubSafetyMargin: ctx.GlobalUint64(flags.SubSafetyMarginFlag.Name),
 		PollInterval:    ctx.GlobalDuration(flags.PollIntervalFlag.Name),
@@ -130,6 +135,7 @@ func NewConfig(ctx *cli.Context) CLIConfig {
 		MaxL1TxSize:            ctx.GlobalUint64(flags.MaxL1TxSizeBytesFlag.Name),
 		Stopped:                ctx.GlobalBool(flags.StoppedFlag.Name),
 		TxMgrConfig:            txmgr.ReadCLIConfig(ctx),
+		TxDAMgrConfig:          txmgr.ReadCLIConfigDA(ctx),
 		RPCConfig:              rpc.ReadCLIConfig(ctx),
 		LogConfig:              oplog.ReadCLIConfig(ctx),
 		MetricsConfig:          opmetrics.ReadCLIConfig(ctx),
