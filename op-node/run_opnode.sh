@@ -8,6 +8,11 @@ if [ "$P2PPORT" == "" ]; then
     P2PPORT=9003
 fi
 
+P2PSTATIC_CFG=""
+if [ "$P2PSTATIC" != "" ]; then
+    P2PSTATIC_CFG="--p2p.static=$P2PSTATIC"
+fi
+
 if [ "$MASTER" == "1" ]; then
   ./bin/op-node \
     --l2=$GETH_HOST \
@@ -42,8 +47,7 @@ else
     --p2p.listen.ip=0.0.0.0 \
     --p2p.listen.tcp=$P2PPORT \
     --p2p.listen.udp=$P2PPORT \
-    --p2p.no-discovery \
-    --p2p.static=/ip4/172.17.0.6/tcp/9003/p2p/16Uiu2HAmP2Y4sxECGu2sGedpD7o1bHn8i7XTDes98mtWPeZ5cJxJ \
+    --p2p.no-discovery $P2PSTATIC_CFG\
     --rpc.enable-admin \
     --l1=$TCHOST \
     --l1.trustrpc=true \
