@@ -13,7 +13,7 @@ echo "DA_RPC" $DA_RPC
       --sub-safety-margin=6 \
       --num-confirmations=1 \
       --safe-abort-nonce-too-low-count=3 \
-      --resubmission-timeout=300s \
+      --resubmission-timeout=3600s \
       --network-timeout=5s \
       --rpc.addr=0.0.0.0 \
       --rpc.port=8548 \
@@ -22,5 +22,5 @@ echo "DA_RPC" $DA_RPC
       --l1-eth-rpc=$TCHOST \
       --log.level=debug \
       --l1-da-rpc=$DA_RPC \
-      --num-confirmations-da=30 \
+      --num-confirmations-da=375 \
       --private-key=$BatcherPriv 2>&1 | cronolog $PWD/resources/logs/%Y-%m-%d.log

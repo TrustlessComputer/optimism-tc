@@ -280,7 +280,7 @@ func (l *L2OutputSubmitter) FetchNextOutputInfo(ctx context.Context) (*eth.Outpu
 		l.log.Info("proposer submission interval has not elapsed", "currentBlockNumber", currentBlockNumber, "nextBlockNumber", nextCheckpointBlock)
 		return nil, false, nil
 	}
-
+	l.log.Info("proposer submission", "currentBlockNumber", currentBlockNumber, "nextBlockNumber", nextCheckpointBlock)
 	return l.fetchOuput(ctx, nextCheckpointBlock)
 }
 
@@ -369,14 +369,14 @@ func (l *L2OutputSubmitter) loop() {
 				break
 			}
 
-			cCtx, cancel := context.WithTimeout(ctx, 10*time.Minute)
-			if err := l.sendTransaction(cCtx, output); err != nil {
+			//cCtx, cancel := context.WithTimeout(ctx, l.txMgr)
+			if err := l.sendTransaction(context.Background(), output); err != nil {
 				l.log.Error("Failed to send proposal transaction", "err", err)
-				cancel()
+				//cancel()
 				break
 			}
 			l.metr.RecordL2BlocksProposed(output.BlockRef)
-			cancel()
+			//cancel()
 
 		case <-l.done:
 			return

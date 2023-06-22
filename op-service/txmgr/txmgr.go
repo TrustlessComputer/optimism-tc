@@ -442,6 +442,7 @@ func (m *SimpleTxManager) increaseGasPrice(ctx context.Context, tx *types.Transa
 		Nonce:    tx.Nonce(),
 		To:       tx.To(),
 		GasPrice: gp,
+		Gas:      tx.Gas(),
 		Data:     tx.Data(),
 		Value:    tx.Value(),
 	}
