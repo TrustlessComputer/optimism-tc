@@ -9,6 +9,7 @@ echo "OPNODE_HOST" $OPNODE_HOST
   --poll-interval 12s \
   --rpc.port 8560 \
   --resubmission-timeout=600s \
+  --txmgr.send-timeout=3600s \
   --num-confirmations=1 \
   --rollup-rpc $OPNODE_HOST \
   --l2oo-address $L2OO_ADDR \
