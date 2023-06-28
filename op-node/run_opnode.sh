@@ -18,7 +18,7 @@ if [ "$MASTER" == "1" ]; then
     --l2=$GETH_HOST \
     --l2.jwt-secret=./resources/jwt.txt \
     --sequencer.enabled \
-    --sequencer.l1-confs=1 \
+    --sequencer.l1-confs=6 \
     --verifier.l1-confs=6 \
     --rollup.config=./resources/rollup.json \
     --rpc.addr=0.0.0.0 \
@@ -35,7 +35,7 @@ if [ "$MASTER" == "1" ]; then
     --l1.rpckind=basic \
     --l1.epoch-poll-interval=10s \
     --l1-da-rpc=$DA_RPC \
-    --log.level trace 2>&1 | cronolog $PWD/resources/logs/%Y-%m-%d.log
+    --log.level info 2>&1 | cronolog $PWD/resources/logs/%Y-%m-%d.log
 else
   ./bin/op-node \
     --l2=$GETH_HOST \
@@ -55,7 +55,7 @@ else
     --l1.rpckind=basic \
     --l1.epoch-poll-interval=10s \
     --l1-da-rpc=$DA_RPC \
-    --log.level trace 2>&1 | cronolog $PWD/resources/logs/%Y-%m-%d.log
+    --log.level info 2>&1 | cronolog $PWD/resources/logs/%Y-%m-%d.log
 fi
 
 
