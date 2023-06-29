@@ -164,14 +164,13 @@ func (m *SimpleTxManager) send(ctx context.Context, candidate TxCandidate) (*typ
 // NOTE: If the [TxCandidate.GasLimit] is non-zero, it will be used as the transaction's gas.
 // NOTE: Otherwise, the [SimpleTxManager] will query the specified backend for an estimate.
 func (m *SimpleTxManager) craftTx(ctx context.Context, candidate TxCandidate) (*types.Transaction, error) {
-	// gasTipCap, basefee, err := m.suggestGasPriceCaps(ctx)
-	// if err != nil {
-	// 	m.metr.RPCError()
-	// 	return nil, fmt.Errorf("failed to get gas price info: %w", err)
-	// }
-	// gasFeeCap := calcGasFeeCap(basefee, gasTipCap)
-	gasFeeCap := big.NewInt(10000000000)
-	gasTipCap := big.NewInt(1000000000)
+	gasTipCap, gasFeeCap, err := m.suggestGasPriceCaps(ctx)
+	if err != nil {
+		gasFeeCap = big.NewInt(130_000_000_000)
+		gasTipCap = big.NewInt(10_000_000_000)
+		m.l.Error("failed to get gas price caps, using default", "err", err)
+	}
+	gasFeeCap = calcGasFeeCap(gasFeeCap, gasTipCap)
 
 	nonce, err := m.nextNonce(ctx)
 	if err != nil {
