@@ -22,6 +22,7 @@ type Queue[T any] struct {
 	ctx        context.Context
 	txMgr      TxManager
 	maxPending uint64
+	daTxMgr    TxManager
 	groupLock  sync.Mutex
 	groupCtx   context.Context
 	group      *errgroup.Group
@@ -31,7 +32,7 @@ type Queue[T any] struct {
 //   - maxPending: max number of pending txs at once (0 == no limit)
 //   - pendingChanged: called whenever a tx send starts or finishes. The
 //     number of currently pending txs is passed as a parameter.
-func NewQueue[T any](ctx context.Context, txMgr TxManager, maxPending uint64) *Queue[T] {
+func NewQueue[T any](ctx context.Context, txMgr TxManager, daTxMgr TxManager, maxPending uint64) *Queue[T] {
 	if maxPending > math.MaxInt {
 		// ensure we don't overflow as errgroup only accepts int; in reality this will never be an issue
 		maxPending = math.MaxInt
@@ -39,6 +40,7 @@ func NewQueue[T any](ctx context.Context, txMgr TxManager, maxPending uint64) *Q
 	return &Queue[T]{
 		ctx:        ctx,
 		txMgr:      txMgr,
+		daTxMgr:    daTxMgr,
 		maxPending: maxPending,
 	}
 }
@@ -61,6 +63,34 @@ func (q *Queue[T]) Send(id T, candidate TxCandidate, receiptCh chan TxReceipt[T]
 	group, ctx := q.groupContext()
 	group.Go(func() error {
 		return q.sendTx(ctx, id, candidate, receiptCh)
+	})
+}
+
+func (q *Queue[T]) Send2Step(id T, candidate TxCandidate, receiptCh chan TxReceipt[T]) {
+	// clone candidate
+	l1Candidate := candidate
+
+	group, ctx := q.groupContext()
+	group.Go(func() error {
+		receipt, err := q.daTxMgr.Send(ctx, candidate)
+		if err != nil {
+			receiptCh <- TxReceipt[T]{
+				ID:      id,
+				Receipt: receipt,
+				Err:     err,
+			}
+			return err
+		}
+		_, ctx = q.groupContext()
+		l1Candidate.TxData = append([]byte{1}, receipt.TxHash.Bytes()...)
+		receipt, err = q.txMgr.Send(ctx, l1Candidate)
+		receiptCh <- TxReceipt[T]{
+			ID:      id,
+			Receipt: receipt,
+			Err:     err,
+		}
+
+		return err
 	})
 }
 

@@ -1,0 +1,24 @@
+FROM ubuntu:20.04
+
+RUN apt-get update
+RUN apt-get install -y ca-certificates cronolog cron
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get install -yq dnsutils
+
+ARG commit=commit
+ENV commit=$commit
+
+RUN mkdir -p /app/logs /app/bin /app/resources
+
+WORKDIR /app
+
+COPY ./bin/op-proposer /app/bin/.
+RUN chmod +x /app/bin/op-proposer
+
+COPY ./run_opproposer.sh /app/.
+RUN chmod +x /app/run_opproposer.sh
+
+CMD ["/bin/bash","run_opproposer.sh"]
+
+
+

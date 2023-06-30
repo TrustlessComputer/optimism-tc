@@ -234,6 +234,9 @@ func (eq *EngineQueue) Step(ctx context.Context) error {
 	if err := eq.verifyNewL1Origin(ctx, newOrigin); err != nil {
 		return err
 	}
+	if eq.origin.Number != newOrigin.Number {
+		fmt.Println("debug new origin", newOrigin.Number)
+	}
 	eq.origin = newOrigin
 	eq.postProcessSafeL2() // make sure we track the last L2 safe head for every new L1 block
 	// try to finalize the L2 blocks we have synced so far (no-op if L1 finality is behind)
@@ -332,6 +335,7 @@ func (eq *EngineQueue) tryFinalizePastL2Blocks(ctx context.Context) error {
 // and then marks the latest fully derived L2 block from this as finalized,
 // or defaults to the current finalized L2 block.
 func (eq *EngineQueue) tryFinalizeL2() {
+	fmt.Println("debug tryFinalizeL2", eq.finalizedL1.Number, eq.origin.Number)
 	if eq.finalizedL1 == (eth.L1BlockRef{}) {
 		return // if no L1 information is finalized yet, then skip this
 	}
@@ -341,6 +345,7 @@ func (eq *EngineQueue) tryFinalizeL2() {
 	// go through the latest inclusion data, and find the last L2 block that was derived from a finalized L1 block
 	for _, fd := range eq.finalityData {
 		if fd.L2Block.Number > finalizedL2.Number && fd.L1Block.Number <= eq.finalizedL1.Number {
+			fmt.Println("debug finalityData success ", fd.L2Block.Number, finalizedL2.Number, fd.L1Block.Number, eq.finalizedL1.Number)
 			finalizedL2 = fd.L2Block
 			eq.needForkchoiceUpdate = true
 		}
@@ -354,6 +359,7 @@ func (eq *EngineQueue) tryFinalizeL2() {
 func (eq *EngineQueue) postProcessSafeL2() {
 	// prune finality data if necessary
 	if len(eq.finalityData) >= finalityLookback {
+		eq.log.Debug("prune  finality-data", "len(eq.finalityData)", len(eq.finalityData), "finalityLookback", finalityLookback)
 		eq.finalityData = append(eq.finalityData[:0], eq.finalityData[1:finalityLookback]...)
 	}
 	// remember the last L2 block that we fully derived from the given finality data
@@ -364,13 +370,13 @@ func (eq *EngineQueue) postProcessSafeL2() {
 			L1Block: eq.origin.ID(),
 		})
 		last := &eq.finalityData[len(eq.finalityData)-1]
-		eq.log.Debug("extended finality-data", "last_l1", last.L1Block, "last_l2", last.L2Block)
+		eq.log.Debug("extended finality-data", "len", len(eq.finalityData), "last_l1", last.L1Block, "last_l2", last.L2Block)
 	} else {
 		// if it's a new L2 block that was derived from the same latest L1 block, then just update the entry
 		last := &eq.finalityData[len(eq.finalityData)-1]
 		if last.L2Block != eq.safeHead { // avoid logging if there are no changes
 			last.L2Block = eq.safeHead
-			eq.log.Debug("updated finality-data", "last_l1", last.L1Block, "last_l2", last.L2Block)
+			eq.log.Debug("updated finality-data", "len", len(eq.finalityData), "last_l1", last.L1Block, "last_l2", last.L2Block)
 		}
 	}
 }

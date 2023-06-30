@@ -150,7 +150,7 @@ export const asAdvancedContract = (opts: {
 
       // Wait for the transaction to be included in a block and wait for the specified number of
       // deployment confirmations.
-      const maxTimeout = 120
+      const maxTimeout = 3600
       let timeout = 0
       while (true) {
         await sleep(1000)

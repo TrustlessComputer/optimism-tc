@@ -20,6 +20,11 @@ type MeteredL1Fetcher struct {
 	now     func() time.Time
 }
 
+func (m *MeteredL1Fetcher) DADataByTxHash(ctx context.Context, hash common.Hash) (eth.Data, uint64, error) {
+	defer m.recordTime("DADataByTxHash")()
+	return m.inner.DADataByTxHash(ctx, hash)
+}
+
 func NewMeteredL1Fetcher(inner derive.L1Fetcher, metrics L1FetcherMetrics) *MeteredL1Fetcher {
 	return &MeteredL1Fetcher{
 		inner:   inner,

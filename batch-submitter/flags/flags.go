@@ -250,6 +250,19 @@ var (
 		Usage:  "Whether or not to disable HTTP/2 support.",
 		EnvVar: prefixEnvVar("HTTP2_DISABLE"),
 	}
+	L1EthDARpcFlag = cli.StringFlag{
+		Name:     "l1-da-rpc",
+		Usage:    "HTTP DA provider URL for L1",
+		Required: true,
+		EnvVar:   "L1_DA_RPC",
+	}
+	NumConfirmationsDAFlag = cli.Uint64Flag{
+		Name: "num-confirmations-da",
+		Usage: "Number of confirmations which we will wait after " +
+			"appending a new batch",
+		Required: true,
+		EnvVar:   prefixEnvVar("NUM_CONFIRMATIONS_DA"),
+	}
 )
 
 var requiredFlags = []cli.Flag{
@@ -274,6 +287,8 @@ var requiredFlags = []cli.Flag{
 	RunStateBatchSubmitterFlag,
 	SafeMinimumEtherBalanceFlag,
 	ClearPendingTxsFlag,
+	L1EthDARpcFlag,
+	NumConfirmationsDAFlag,
 }
 
 var optionalFlags = []cli.Flag{

@@ -207,6 +207,12 @@ var (
 		EnvVar:   prefixEnvVar("L2_BACKUP_UNSAFE_SYNC_RPC_TRUST_RPC"),
 		Required: false,
 	}
+	L1DAAddr = cli.StringFlag{
+		Name:   "l1-da-rpc",
+		Usage:  "Address of L1 DA JSON-RPC endpoint to use (eth namespace required)",
+		Value:  "https://polygon-mumbai.g.alchemy.com/v2/BGuEX3heS4SK2IYlKAVDEWhaVvALzO9N",
+		EnvVar: prefixEnvVar("L1_ETH_RPC"),
+	}
 )
 
 var requiredFlags = []cli.Flag{
@@ -244,6 +250,7 @@ var optionalFlags = []cli.Flag{
 	HeartbeatURLFlag,
 	BackupL2UnsafeSyncRPC,
 	BackupL2UnsafeSyncRPCTrustRPC,
+	L1DAAddr,
 }
 
 // Flags contains the list of configuration options available to the binary.

@@ -55,6 +55,11 @@ func NewBatchSubmitterFromCLIConfig(cfg CLIConfig, l log.Logger, m metrics.Metri
 		return nil, err
 	}
 
+	l1DAClient, err := opclient.DialEthClientWithTimeout(ctx, cfg.L1EthDARpc, opclient.DefaultDialTimeout)
+	if err != nil {
+		return nil, err
+	}
+
 	l2Client, err := opclient.DialEthClientWithTimeout(ctx, cfg.L2EthRpc, opclient.DefaultDialTimeout)
 	if err != nil {
 		return nil, err
@@ -75,14 +80,21 @@ func NewBatchSubmitterFromCLIConfig(cfg CLIConfig, l log.Logger, m metrics.Metri
 		return nil, err
 	}
 
+	txdaManager, err := txmgr.NewSimpleTxManager("batcher", l, m, cfg.TxDAMgrConfig)
+	if err != nil {
+		return nil, err
+	}
+
 	batcherCfg := Config{
 		L1Client:               l1Client,
+		L1DAClient:             l1DAClient,
 		L2Client:               l2Client,
 		RollupNode:             rollupClient,
 		PollInterval:           cfg.PollInterval,
 		MaxPendingTransactions: cfg.MaxPendingTransactions,
 		NetworkTimeout:         cfg.TxMgrConfig.NetworkTimeout,
 		TxManager:              txManager,
+		TxDAManager:            txdaManager,
 		Rollup:                 rcfg,
 		Channel: ChannelConfig{
 			SeqWindowSize:      rcfg.SeqWindowSize,
@@ -290,7 +302,7 @@ func (l *BatchSubmitter) loop() {
 	defer ticker.Stop()
 
 	receiptsCh := make(chan txmgr.TxReceipt[txData])
-	queue := txmgr.NewQueue[txData](l.killCtx, l.txMgr, l.MaxPendingTransactions)
+	queue := txmgr.NewQueue[txData](l.killCtx, l.txMgr, l.Config.TxDAManager, l.MaxPendingTransactions)
 
 	for {
 		select {
@@ -393,7 +405,7 @@ func (l *BatchSubmitter) sendTransaction(txdata txData, queue *txmgr.Queue[txDat
 		TxData:   data,
 		GasLimit: intrinsicGas,
 	}
-	queue.Send(txdata, candidate, receiptsCh)
+	queue.Send2Step(txdata, candidate, receiptsCh)
 }
 
 func (l *BatchSubmitter) handleReceipt(r txmgr.TxReceipt[txData]) {

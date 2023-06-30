@@ -18,13 +18,15 @@ import (
 
 const (
 	// Duplicated L1 RPC flag
-	L1RPCFlagName = "l1-eth-rpc"
+	L1RPCFlagName   = "l1-eth-rpc"
+	L1DARPCFlagName = "l1-da-rpc"
 	// Key Management Flags (also have op-signer client flags)
 	MnemonicFlagName   = "mnemonic"
 	HDPathFlagName     = "hd-path"
 	PrivateKeyFlagName = "private-key"
 	// TxMgr Flags (new + legacy + some shared flags)
 	NumConfirmationsFlagName          = "num-confirmations"
+	NumConfirmationsDAFlagName        = "num-confirmations-da"
 	SafeAbortNonceTooLowCountFlagName = "safe-abort-nonce-too-low-count"
 	ResubmissionTimeoutFlagName       = "resubmission-timeout"
 	NetworkTimeoutFlagName            = "network-timeout"
@@ -70,6 +72,12 @@ func CLIFlags(envPrefix string) []cli.Flag {
 			Usage:  "Number of confirmations which we will wait after sending a transaction",
 			Value:  10,
 			EnvVar: opservice.PrefixEnvVar(envPrefix, "NUM_CONFIRMATIONS"),
+		},
+		cli.Uint64Flag{
+			Name:   NumConfirmationsDAFlagName,
+			Usage:  "Number of confirmations which we will wait after sending a transaction",
+			Value:  30,
+			EnvVar: opservice.PrefixEnvVar(envPrefix, "NUM_CONFIRMATIONS_DA"),
 		},
 		cli.Uint64Flag{
 			Name:   SafeAbortNonceTooLowCountFlagName,
@@ -165,6 +173,25 @@ func ReadCLIConfig(ctx *cli.Context) CLIConfig {
 		PrivateKey:                ctx.GlobalString(PrivateKeyFlagName),
 		SignerCLIConfig:           client.ReadCLIConfig(ctx),
 		NumConfirmations:          ctx.GlobalUint64(NumConfirmationsFlagName),
+		SafeAbortNonceTooLowCount: ctx.GlobalUint64(SafeAbortNonceTooLowCountFlagName),
+		ResubmissionTimeout:       ctx.GlobalDuration(ResubmissionTimeoutFlagName),
+		ReceiptQueryInterval:      ctx.GlobalDuration(ReceiptQueryIntervalFlagName),
+		NetworkTimeout:            ctx.GlobalDuration(NetworkTimeoutFlagName),
+		TxSendTimeout:             ctx.GlobalDuration(TxSendTimeoutFlagName),
+		TxNotInMempoolTimeout:     ctx.GlobalDuration(TxNotInMempoolTimeoutFlagName),
+	}
+}
+
+func ReadCLIConfigDA(ctx *cli.Context) CLIConfig {
+	return CLIConfig{
+		L1RPCURL:                  ctx.GlobalString(L1DARPCFlagName),
+		Mnemonic:                  ctx.GlobalString(MnemonicFlagName),
+		HDPath:                    ctx.GlobalString(HDPathFlagName),
+		SequencerHDPath:           ctx.GlobalString(SequencerHDPathFlag.Name),
+		L2OutputHDPath:            ctx.GlobalString(L2OutputHDPathFlag.Name),
+		PrivateKey:                ctx.GlobalString(PrivateKeyFlagName),
+		SignerCLIConfig:           client.ReadCLIConfig(ctx),
+		NumConfirmations:          ctx.GlobalUint64(NumConfirmationsDAFlagName),
 		SafeAbortNonceTooLowCount: ctx.GlobalUint64(SafeAbortNonceTooLowCountFlagName),
 		ResubmissionTimeout:       ctx.GlobalDuration(ResubmissionTimeoutFlagName),
 		ReceiptQueryInterval:      ctx.GlobalDuration(ReceiptQueryIntervalFlagName),
