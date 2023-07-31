@@ -3,7 +3,6 @@ package compressor
 import (
 	"bytes"
 	"compress/zlib"
-
 	"github.com/ethereum-optimism/optimism/op-node/rollup/derive"
 )
 
@@ -74,7 +73,9 @@ func (t *RatioCompressor) FullErr() error {
 // InputThreshold calculates the input data threshold in bytes from the given
 // parameters.
 func (t *RatioCompressor) InputThreshold() uint64 {
-	return uint64(float64(t.config.TargetNumFrames) * float64(t.config.TargetFrameSize) / t.config.ApproxComprRatio)
+	//fmt.Println("debug InputThreshold", t.config.TargetNumFrames, t.config.TargetFrameSize, t.config.ApproxComprRatio, uint64(float64(t.config.TargetNumFrames)*float64(t.config.TargetFrameSize)/t.config.ApproxComprRatio))
+	//return uint64(float64(t.config.TargetNumFrames) * float64(t.config.TargetFrameSize) / t.config.ApproxComprRatio)
+	return 3333
 }
 
 // inputTargetReached says whether the target amount of input data has been

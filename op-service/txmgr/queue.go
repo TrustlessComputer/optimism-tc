@@ -4,6 +4,7 @@ import (
 	"context"
 	"math"
 	"sync"
+	"time"
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"golang.org/x/sync/errgroup"
@@ -26,6 +27,9 @@ type Queue[T any] struct {
 	groupLock  sync.Mutex
 	groupCtx   context.Context
 	group      *errgroup.Group
+
+	waitGroup    *sync.WaitGroup     //wait for all DA routine finish
+	receiptQueue chan *types.Receipt // queue of receipts
 }
 
 // NewQueue creates a new transaction sending Queue, with the following parameters:
@@ -38,10 +42,12 @@ func NewQueue[T any](ctx context.Context, txMgr TxManager, daTxMgr TxManager, ma
 		maxPending = math.MaxInt
 	}
 	return &Queue[T]{
-		ctx:        ctx,
-		txMgr:      txMgr,
-		daTxMgr:    daTxMgr,
-		maxPending: maxPending,
+		ctx:          ctx,
+		txMgr:        txMgr,
+		daTxMgr:      daTxMgr,
+		maxPending:   maxPending,
+		waitGroup:    new(sync.WaitGroup),
+		receiptQueue: make(chan *types.Receipt, 5),
 	}
 }
 
@@ -69,26 +75,39 @@ func (q *Queue[T]) Send(id T, candidate TxCandidate, receiptCh chan TxReceipt[T]
 func (q *Queue[T]) Send2Step(id T, candidate TxCandidate, receiptCh chan TxReceipt[T]) {
 	// clone candidate
 	l1Candidate := candidate
-
 	group, ctx := q.groupContext()
 	group.Go(func() error {
-		receipt, err := q.daTxMgr.Send(ctx, candidate)
-		if err != nil {
-			receiptCh <- TxReceipt[T]{
-				ID:      id,
-				Receipt: receipt,
-				Err:     err,
-			}
-			return err
-		}
-		_, ctx = q.groupContext()
-		l1Candidate.TxData = append([]byte{1}, receipt.TxHash.Bytes()...)
-		receipt, err = q.txMgr.Send(ctx, l1Candidate)
+		receipt, err := q.daTxMgr.Send(ctx, candidate) //after short period of time
 		receiptCh <- TxReceipt[T]{
 			ID:      id,
 			Receipt: receipt,
 			Err:     err,
 		}
+		if err != nil {
+			return err
+		}
+		q.receiptQueue <- receipt
+		go func() {
+			q.waitGroup.Add(1)
+			for {
+				latestBlock, _ := q.daTxMgr.(*SimpleTxManager).backend.BlockNumber(context.Background())
+				if receipt.BlockNumber.Uint64() < latestBlock-375 {
+					break
+				}
+				time.Sleep(time.Second * 1)
+			}
+			header, _ := q.daTxMgr.(*SimpleTxManager).backend.HeaderByNumber(context.Background(), receipt.BlockNumber)
+			if header.Hash() != receipt.BlockHash {
+				panic("DA tx is forked! We need to reboot")
+			}
+
+			q.waitGroup.Done()
+			q.waitGroup.Wait()
+
+			l1Receipt := <-q.receiptQueue
+			l1Candidate.TxData = append([]byte{1}, l1Receipt.TxHash.Bytes()...)
+			receipt, err = q.txMgr.Send(ctx, l1Candidate)
+		}()
 
 		return err
 	})

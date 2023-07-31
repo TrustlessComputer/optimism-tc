@@ -22,5 +22,5 @@ echo "DA_RPC" $DA_RPC
       --l1-eth-rpc=$TCHOST \
       --log.level=debug \
       --l1-da-rpc=$DA_RPC \
-      --num-confirmations-da=375 \
+      --num-confirmations-da=3 \
       --private-key=$BatcherPriv 2>&1 | cronolog $PWD/resources/logs/%Y-%m-%d.log
