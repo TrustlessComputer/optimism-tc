@@ -2,6 +2,8 @@ package txmgr
 
 import (
 	"context"
+	"fmt"
+	"golang.org/x/sync/semaphore"
 	"math"
 	"sync"
 	"time"
@@ -28,8 +30,8 @@ type Queue[T any] struct {
 	groupCtx   context.Context
 	group      *errgroup.Group
 
-	waitGroup    *sync.WaitGroup     //wait for all DA routine finish
-	receiptQueue chan *types.Receipt // queue of receipts
+	sem                     *semaphore.Weighted
+	daConfirmedReceiptQueue chan TxCandidate
 }
 
 // NewQueue creates a new transaction sending Queue, with the following parameters:
@@ -41,14 +43,16 @@ func NewQueue[T any](ctx context.Context, txMgr TxManager, daTxMgr TxManager, ma
 		// ensure we don't overflow as errgroup only accepts int; in reality this will never be an issue
 		maxPending = math.MaxInt
 	}
-	return &Queue[T]{
-		ctx:          ctx,
-		txMgr:        txMgr,
-		daTxMgr:      daTxMgr,
-		maxPending:   maxPending,
-		waitGroup:    new(sync.WaitGroup),
-		receiptQueue: make(chan *types.Receipt, 5),
+	q := &Queue[T]{
+		ctx:                     ctx,
+		txMgr:                   txMgr,
+		daTxMgr:                 daTxMgr,
+		maxPending:              maxPending,
+		sem:                     semaphore.NewWeighted(10),
+		daConfirmedReceiptQueue: make(chan TxCandidate),
 	}
+	go q.SendStep2Routine()
+	return q
 }
 
 // Wait waits for all pending txs to complete (or fail).
@@ -72,9 +76,60 @@ func (q *Queue[T]) Send(id T, candidate TxCandidate, receiptCh chan TxReceipt[T]
 	})
 }
 
+func (q *Queue[T]) SendStep2Routine() {
+	wg := sync.WaitGroup{}
+	lock := sync.Mutex{}
+	candidates := []TxCandidate{}
+	go func() {
+		for {
+			select {
+			case c := <-q.daConfirmedReceiptQueue:
+				fmt.Println("============ add candidate to l1 queue ============")
+				lock.Lock()
+				candidates = append(candidates, c)
+				lock.Unlock()
+			}
+		}
+	}()
+
+	ticker := time.NewTicker(time.Minute * 5)
+	for {
+		select {
+		case <-ticker.C:
+			lock.Lock()
+			for _, l1Candidate := range candidates {
+				wg.Add(1)
+				go func(candidate TxCandidate) {
+					receipt, err := q.txMgr.Send(context.Background(), candidate)
+					if err != nil {
+						panic(fmt.Errorf("send tx to l1 failed: %w", err))
+					}
+					fmt.Println("send tx to l1 success", receipt.BlockNumber)
+					wg.Done()
+					q.sem.Release(1)
+				}(l1Candidate)
+				time.Sleep(time.Millisecond * 100)
+			}
+			candidates = []TxCandidate{}
+			lock.Unlock()
+			wg.Wait()
+		}
+	}
+
+}
+
 func (q *Queue[T]) Send2Step(id T, candidate TxCandidate, receiptCh chan TxReceipt[T]) {
 	// clone candidate
 	l1Candidate := candidate
+	if !q.sem.TryAcquire(1) {
+		time.Sleep(time.Minute)
+		receiptCh <- TxReceipt[T]{
+			ID:      id,
+			Receipt: nil,
+			Err:     fmt.Errorf("too many pending txs"),
+		}
+		return
+	}
 	group, ctx := q.groupContext()
 	group.Go(func() error {
 		receipt, err := q.daTxMgr.Send(ctx, candidate) //after short period of time
@@ -86,9 +141,8 @@ func (q *Queue[T]) Send2Step(id T, candidate TxCandidate, receiptCh chan TxRecei
 		if err != nil {
 			return err
 		}
-		q.receiptQueue <- receipt
+
 		go func() {
-			q.waitGroup.Add(1)
 			for {
 				latestBlock, _ := q.daTxMgr.(*SimpleTxManager).backend.BlockNumber(context.Background())
 				if receipt.BlockNumber.Uint64() < latestBlock-375 {
@@ -97,16 +151,12 @@ func (q *Queue[T]) Send2Step(id T, candidate TxCandidate, receiptCh chan TxRecei
 				time.Sleep(time.Second * 1)
 			}
 			header, _ := q.daTxMgr.(*SimpleTxManager).backend.HeaderByNumber(context.Background(), receipt.BlockNumber)
-			if header.Hash() != receipt.BlockHash {
+			if header.Hash().String() != receipt.BlockHash.String() {
 				panic("DA tx is forked! We need to reboot")
 			}
 
-			q.waitGroup.Done()
-			q.waitGroup.Wait()
-
-			l1Receipt := <-q.receiptQueue
-			l1Candidate.TxData = append([]byte{1}, l1Receipt.TxHash.Bytes()...)
-			receipt, err = q.txMgr.Send(ctx, l1Candidate)
+			l1Candidate.TxData = append([]byte{1}, receipt.TxHash.Bytes()...)
+			q.daConfirmedReceiptQueue <- l1Candidate
 		}()
 
 		return err
