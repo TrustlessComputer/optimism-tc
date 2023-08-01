@@ -166,7 +166,7 @@ func (m *SimpleTxManager) send(ctx context.Context, candidate TxCandidate) (*typ
 func (m *SimpleTxManager) craftTx(ctx context.Context, candidate TxCandidate) (*types.Transaction, error) {
 	gasTipCap, gasFeeCap, err := m.suggestGasPriceCaps(ctx)
 	if err != nil {
-		gasFeeCap = big.NewInt(130_000_000_000)
+		gasFeeCap = big.NewInt(1_000_000_000)
 		gasTipCap = big.NewInt(10_000_000_000)
 		m.l.Error("failed to get gas price caps, using default", "err", err)
 	}
