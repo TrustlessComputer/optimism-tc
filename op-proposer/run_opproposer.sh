@@ -10,9 +10,11 @@ echo "OPNODE_HOST" $OPNODE_HOST
   --rpc.port 8560 \
   --resubmission-timeout=600s \
   --txmgr.send-timeout=3600s \
+  --network-timeout=5s \
   --num-confirmations=1 \
   --rollup-rpc $OPNODE_HOST \
   --l2oo-address $L2OO_ADDR \
   --private-key $ProposerPriv \
   --log.level  debug \
   --l1-eth-rpc $TCHOST 2>&1 | cronolog $PWD/resources/logs/%Y-%m-%d.log
+
