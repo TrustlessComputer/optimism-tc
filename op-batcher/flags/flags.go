@@ -81,6 +81,12 @@ var (
 		Usage:  "HTTP DA provider URL for L1",
 		EnvVar: opservice.PrefixEnvVar(EnvVarPrefix, "L1_DA_RPC"),
 	}
+
+	L1EthDATypeFlag = cli.StringFlag{
+		Name:   "l1-da-type",
+		Usage:  "HTTP DA type for L1",
+		EnvVar: opservice.PrefixEnvVar(EnvVarPrefix, "L1_DA_TYPE"),
+	}
 )
 
 var requiredFlags = []cli.Flag{
@@ -88,6 +94,7 @@ var requiredFlags = []cli.Flag{
 	L2EthRpcFlag,
 	RollupRpcFlag,
 	L1EthDARpcFlag,
+	L1EthDATypeFlag,
 }
 
 var optionalFlags = []cli.Flag{

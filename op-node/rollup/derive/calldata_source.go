@@ -91,6 +91,15 @@ func NewDataSource(ctx context.Context, log log.Logger, cfg *rollup.Config, fetc
 					batcherAddr: batcherAddr,
 				}
 			}
+
+			if data[0] == 0x00 {
+				resultData = append(resultData, data)
+				return &DataSource{
+					open: true,
+					data: resultData,
+				}
+			}
+
 			if data, numConfirmations, err := fetcher.DADataByTxHash(ctx, common.BytesToHash(txHash)); err == nil {
 				if numConfirmations < NumConfirmationsDA {
 					return &DataSource{
