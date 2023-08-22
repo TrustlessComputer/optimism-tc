@@ -88,6 +88,7 @@ func NewBatchSubmitterFromCLIConfig(cfg CLIConfig, l log.Logger, m metrics.Metri
 	batcherCfg := Config{
 		L1Client:               l1Client,
 		L1DAClient:             l1DAClient,
+		DaType:                 cfg.L1EthDAType,
 		L2Client:               l2Client,
 		RollupNode:             rollupClient,
 		PollInterval:           cfg.PollInterval,
@@ -405,7 +406,13 @@ func (l *BatchSubmitter) sendTransaction(txdata txData, queue *txmgr.Queue[txDat
 		TxData:   data,
 		GasLimit: intrinsicGas,
 	}
-	queue.Send2Step(txdata, candidate, receiptsCh)
+	if l.DaType == "BTC" {
+		candidate.TxData = append([]byte{0}, data...)
+		candidate.GasLimit = intrinsicGas * 2
+		queue.Send(txdata, candidate, receiptsCh)
+	} else {
+		queue.Send2Step(txdata, candidate, receiptsCh)
+	}
 }
 
 func (l *BatchSubmitter) handleReceipt(r txmgr.TxReceipt[txData]) {

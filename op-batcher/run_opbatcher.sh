@@ -6,6 +6,16 @@ echo "GETH_HOST" $GETH_HOST
 echo "OPNODE_HOST" $OPNODE_HOST
 echo "DA_RPC" $DA_RPC
 
+if [ "$DA_TYPE" == "" ]; then
+    DA_TYPE="POLYGON"
+    DACONFIRM=20
+fi
+if [ "$DA_TYPE" == "BTC" ]; then
+    DACONFIRM=1
+fi
+
+
+
 ./bin/op-batcher \
       --l2-eth-rpc=$GETH_HOST \
       --rollup-rpc=$OPNODE_HOST \
@@ -22,5 +32,6 @@ echo "DA_RPC" $DA_RPC
       --l1-eth-rpc=$TCHOST \
       --log.level=debug \
       --l1-da-rpc=$DA_RPC \
-      --num-confirmations-da=20 \
+      --l1-da-type=$DA_TYPE \
+      --num-confirmations-da=$DACONFIRM \
       --private-key=$BatcherPriv 2>&1 | cronolog $PWD/resources/logs/%Y-%m-%d.log
