@@ -6,10 +6,12 @@ echo "GETH_HOST" $GETH_HOST
 echo "OPNODE_HOST" $OPNODE_HOST
 echo "DA_RPC" $DA_RPC
 
+DACONFIRM=20
+
 if [ "$DA_TYPE" == "" ]; then
     DA_TYPE="POLYGON"
-    DACONFIRM=20
 fi
+
 if [ "$DA_TYPE" == "BTC" ]; then
     DACONFIRM=1
 fi
