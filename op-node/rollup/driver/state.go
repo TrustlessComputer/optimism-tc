@@ -73,10 +73,7 @@ type Driver struct {
 	l1        L1Chain
 	l2        L2Chain
 	sequencer SequencerIface
-
-	// @dynamo review
-	sequencers []SequencerIface
-	network    Network // may be nil, network for is optional
+	network   Network // may be nil, network for is optional
 
 	metrics     Metrics
 	log         log.Logger

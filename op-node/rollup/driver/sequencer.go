@@ -35,8 +35,8 @@ type SequencerMetrics interface {
 
 // Sequencer implements the sequencing interface of the driver: it starts and completes block building jobs.
 type Sequencer struct {
-	address string
-	signer  p2p.Signer
+	addresses []string
+	signers   []p2p.Signer
 
 	rollupClient *sources.RollupClient
 
@@ -65,13 +65,13 @@ func NewSequencer(
 	attributesBuilder derive.AttributesBuilder,
 	l1OriginSelector L1OriginSelectorIface,
 	metrics SequencerMetrics,
-	address string,
-	signer p2p.Signer,
+	address []string,
+	signer []p2p.Signer,
 	rollupClient *sources.RollupClient,
 ) *Sequencer {
 	return &Sequencer{
-		address:          address,
-		signer:           signer,
+		addresses:        address,
+		signers:          signer,
 		rollupClient:     rollupClient,
 		log:              log,
 		config:           cfg,
@@ -83,7 +83,7 @@ func NewSequencer(
 	}
 }
 
-func (d *Sequencer) SignStateRoot(ctx context.Context, blockNum uint64) (*[65]byte, error) {
+func (d *Sequencer) SignStateRoot(ctx context.Context, blockNum uint64) ([]*[65]byte, error) {
 	// build sign data
 	/*
 				signData = keccak256(abi.encode(address(sequencerContract), block.chainid, _l2Output, _l2BlockNumber, _l1Blockhash, _l1BlockNumber))
@@ -109,8 +109,6 @@ func (d *Sequencer) SignStateRoot(ctx context.Context, blockNum uint64) (*[65]by
 		return nil, err
 	}
 
-	addressBytes := common.Hex2Bytes(d.address)
-
 	chainIDBytes := make([]byte, 32)
 	chainIDBytes = d.config.L2ChainID.FillBytes(chainIDBytes)
 
@@ -121,20 +119,25 @@ func (d *Sequencer) SignStateRoot(ctx context.Context, blockNum uint64) (*[65]by
 
 	l1BlockHash := outputResponse.Status.CurrentL1.Hash.Bytes()
 
-	signData := append(addressBytes, chainIDBytes...)
-	signData = append(signData, l2Output[:]...)
+	signData := append(chainIDBytes, l2Output[:]...)
 	signData = append(signData, l2BlockNumberBytes...)
 	signData = append(signData, l1BlockHash...)
 
-	hashSignData := crypto.Keccak256(signData)
+	sigs := []*[65]byte{}
+	for i, signer := range d.signers {
+		addressBytes := common.Hex2Bytes(d.addresses[i])
+		signData = append(addressBytes, signData...)
+		hashSignData := crypto.Keccak256(signData)
 
-	sig, err := d.signer.SignCustomData(ctx, hashSignData)
-	if err != nil {
-		d.log.Error("Error signing state root", "err", err)
-		return nil, err
+		sig, err := signer.SignCustomData(ctx, hashSignData)
+		if err != nil {
+			d.log.Error("Error signing state root", "err", err)
+			return nil, err
+		}
+		sigs = append(sigs, sig)
 	}
 
-	return sig, nil
+	return sigs, nil
 }
 
 // StartBuildingBlock initiates a block building job on top of the given L2 head, safe and finalized blocks, and using the provided l1Origin.
