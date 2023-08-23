@@ -221,6 +221,11 @@ func BlockAsPayload(bl *types.Block) (*ExecutionPayload, error) {
 	}, nil
 }
 
+type StateRootSignature struct {
+	Signature     [][]byte
+	StateRootData []byte
+}
+
 type PayloadAttributes struct {
 	// value for the timestamp field of the new payload
 	Timestamp Uint64Quantity `json:"timestamp"`

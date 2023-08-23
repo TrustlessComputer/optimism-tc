@@ -47,6 +47,8 @@ type Sequencer struct {
 	nextAction time.Time
 }
 
+const SEQUENCER_EPOCH = 60
+
 func NewSequencer(log log.Logger, cfg *rollup.Config, engine derive.ResettableEngineControl, attributesBuilder derive.AttributesBuilder, l1OriginSelector L1OriginSelectorIface, metrics SequencerMetrics) *Sequencer {
 	return &Sequencer{
 		log:              log,
@@ -80,7 +82,13 @@ func (d *Sequencer) StartBuildingBlock(ctx context.Context) error {
 	fetchCtx, cancel := context.WithTimeout(ctx, time.Second*20)
 	defer cancel()
 	fmt.Println("debug PreparePayloadAttributes l1Origin", l1Origin.Number, l1Origin.Hash.String())
-	attrs, err := d.attrBuilder.PreparePayloadAttributes(fetchCtx, l2Head, l1Origin.ID())
+
+	var stateRootSignatures *eth.StateRootSignature = nil
+	if l2Head.Number%SEQUENCER_EPOCH == 1 {
+		//TODO: we need to make consensus  if this is the first block of Sequencer Epoch, the output is StateRootSignature
+	}
+	d.log.Info("debug PreparePayloadAttributes", "stateRootSignatures", stateRootSignatures)
+	attrs, err := d.attrBuilder.PreparePayloadAttributes(fetchCtx, l2Head, l1Origin.ID(), stateRootSignatures)
 	if err != nil {
 		return err
 	}
@@ -230,6 +238,8 @@ func (d *Sequencer) RunNextSequencerAction(ctx context.Context) (*eth.ExecutionP
 			return payload, nil
 		}
 	} else {
+		//TODO: check if this timeslot is valid to propose block
+
 		err := d.StartBuildingBlock(ctx)
 		if err != nil {
 			if errors.Is(err, derive.ErrCritical) {
