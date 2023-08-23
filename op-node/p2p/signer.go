@@ -17,6 +17,8 @@ var SigningDomainBlocksV1 = [32]byte{}
 
 type Signer interface {
 	Sign(ctx context.Context, domain [32]byte, chainID *big.Int, encodedMsg []byte) (sig *[65]byte, err error)
+	SignCustomData(ctx context.Context, hashMsg []byte) (sig *[65]byte, err error)
+	GetAddress() (address string, err error)
 	io.Closer
 }
 
@@ -62,6 +64,29 @@ func (s *LocalSigner) Sign(ctx context.Context, domain [32]byte, chainID *big.In
 		return nil, err
 	}
 	return (*[65]byte)(signature), nil
+}
+
+func (s *LocalSigner) SignCustomData(ctx context.Context, hashMsg []byte) (sig *[65]byte, err error) {
+	if s.priv == nil {
+		return nil, errors.New("signer is closed")
+	}
+	if len(hashMsg) != 32 {
+		return nil, errors.New("data must be hashed before hashing")
+	}
+
+	signature, err := crypto.Sign(hashMsg[:], s.priv)
+	if err != nil {
+		return nil, err
+	}
+	return (*[65]byte)(signature), nil
+}
+
+func (s *LocalSigner) GetAddress() (address string, err error) {
+	if s.priv == nil {
+		return "", errors.New("signer is closed")
+	}
+
+	return crypto.PubkeyToAddress(s.priv.PublicKey).String(), nil
 }
 
 func (s *LocalSigner) Close() error {

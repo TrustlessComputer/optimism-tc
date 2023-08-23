@@ -43,6 +43,11 @@ func NewConfig(ctx *cli.Context, log log.Logger) (*node.Config, error) {
 		return nil, fmt.Errorf("failed to load p2p signer: %w", err)
 	}
 
+	listSignerSetup, err := p2pcli.LoadListSignerSetup(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load p2p signer: %w", err)
+	}
+
 	p2pConfig, err := p2pcli.NewConfig(ctx, rollupConfig.BlockTime)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load p2p config: %w", err)
@@ -80,6 +85,7 @@ func NewConfig(ctx *cli.Context, log log.Logger) (*node.Config, error) {
 		},
 		P2P:                 p2pConfig,
 		P2PSigner:           p2pSignerSetup,
+		ListSigner:          listSignerSetup,
 		L1EpochPollInterval: ctx.GlobalDuration(flags.L1EpochPollIntervalFlag.Name),
 		Heartbeat: node.HeartbeatConfig{
 			Enabled: ctx.GlobalBool(flags.HeartbeatEnabledFlag.Name),

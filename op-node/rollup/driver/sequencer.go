@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -11,8 +12,11 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum-optimism/optimism/op-node/eth"
+	"github.com/ethereum-optimism/optimism/op-node/p2p"
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/derive"
+	"github.com/ethereum-optimism/optimism/op-node/sources"
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 type Downloader interface {
@@ -31,6 +35,11 @@ type SequencerMetrics interface {
 
 // Sequencer implements the sequencing interface of the driver: it starts and completes block building jobs.
 type Sequencer struct {
+	address string
+	signer  p2p.Signer
+
+	rollupClient *sources.RollupClient
+
 	log    log.Logger
 	config *rollup.Config
 
@@ -49,8 +58,21 @@ type Sequencer struct {
 
 const SEQUENCER_EPOCH = 60
 
-func NewSequencer(log log.Logger, cfg *rollup.Config, engine derive.ResettableEngineControl, attributesBuilder derive.AttributesBuilder, l1OriginSelector L1OriginSelectorIface, metrics SequencerMetrics) *Sequencer {
+func NewSequencer(
+	log log.Logger,
+	cfg *rollup.Config,
+	engine derive.ResettableEngineControl,
+	attributesBuilder derive.AttributesBuilder,
+	l1OriginSelector L1OriginSelectorIface,
+	metrics SequencerMetrics,
+	address string,
+	signer p2p.Signer,
+	rollupClient *sources.RollupClient,
+) *Sequencer {
 	return &Sequencer{
+		address:          address,
+		signer:           signer,
+		rollupClient:     rollupClient,
 		log:              log,
 		config:           cfg,
 		engine:           engine,
@@ -59,6 +81,60 @@ func NewSequencer(log log.Logger, cfg *rollup.Config, engine derive.ResettableEn
 		l1OriginSelector: l1OriginSelector,
 		metrics:          metrics,
 	}
+}
+
+func (d *Sequencer) SignStateRoot(ctx context.Context, blockNum uint64) (*[65]byte, error) {
+	// build sign data
+	/*
+				signData = keccak256(abi.encode(address(sequencerContract), block.chainid, _l2Output, _l2BlockNumber, _l1Blockhash, _l1BlockNumber))
+				address sequencerContract,
+				uint256 chainId
+				bytes32 _l2Output,
+				uint256 _l2BlockNumber,
+				bytes32 _l1Blockhash,
+
+		///
+				tx, err := contract.ProposeL2Output(
+				opts,
+				output.OutputRoot,
+				new(big.Int).SetUint64(output.BlockRef.Number),
+				output.Status.CurrentL1.Hash,
+				new(big.Int).SetUint64(output.Status.CurrentL1.Number))
+	*/
+	//
+
+	outputResponse, err := d.rollupClient.OutputAtBlock(ctx, blockNum)
+	if err != nil {
+		d.log.Error("Error get output response at block", "blockNum", blockNum, "err", err)
+		return nil, err
+	}
+
+	addressBytes := common.Hex2Bytes(d.address)
+
+	chainIDBytes := make([]byte, 32)
+	chainIDBytes = d.config.L2ChainID.FillBytes(chainIDBytes)
+
+	l2Output := outputResponse.OutputRoot
+
+	l2BlockNumberBytes := make([]byte, 32)
+	l2BlockNumberBytes = new(big.Int).SetUint64(outputResponse.BlockRef.Number).FillBytes(l2BlockNumberBytes)
+
+	l1BlockHash := outputResponse.Status.CurrentL1.Hash.Bytes()
+
+	signData := append(addressBytes, chainIDBytes...)
+	signData = append(signData, l2Output[:]...)
+	signData = append(signData, l2BlockNumberBytes...)
+	signData = append(signData, l1BlockHash...)
+
+	hashSignData := crypto.Keccak256(signData)
+
+	sig, err := d.signer.SignCustomData(ctx, hashSignData)
+	if err != nil {
+		d.log.Error("Error signing state root", "err", err)
+		return nil, err
+	}
+
+	return sig, nil
 }
 
 // StartBuildingBlock initiates a block building job on top of the given L2 head, safe and finalized blocks, and using the provided l1Origin.

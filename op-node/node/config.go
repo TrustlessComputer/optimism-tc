@@ -25,6 +25,8 @@ type Config struct {
 	// if the node is sequencing and if the p2p stack is enabled
 	P2PSigner p2p.SignerSetup
 
+	ListSigner []p2p.SignerSetup
+
 	RPC RPCConfig
 
 	P2P p2p.SetupP2P

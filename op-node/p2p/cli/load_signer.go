@@ -31,3 +31,24 @@ func LoadSignerSetup(ctx *cli.Context) (p2p.SignerSetup, error) {
 
 	return nil, nil
 }
+
+// TODO
+func LoadListSignerSetup(ctx *cli.Context) ([]p2p.SignerSetup, error) {
+	key := ctx.GlobalString(flags.SequencerP2PKeyFlag.Name)
+	if key != "" {
+		// Mnemonics are bad because they leak *all* keys when they leak.
+		// Unencrypted keys from file are bad because they are easy to leak (and we are not checking file permissions).
+		priv, err := crypto.HexToECDSA(key)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read batch submitter key: %w", err)
+		}
+
+		signer := &p2p.PreparedSigner{Signer: p2p.NewLocalSigner(priv)}
+
+		return []p2p.SignerSetup{signer}, nil
+	}
+
+	// TODO: create remote signer
+
+	return nil, nil
+}

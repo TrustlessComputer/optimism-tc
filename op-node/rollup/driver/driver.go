@@ -8,8 +8,10 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum-optimism/optimism/op-node/eth"
+	"github.com/ethereum-optimism/optimism/op-node/p2p"
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/derive"
+	"github.com/ethereum-optimism/optimism/op-node/sources"
 )
 
 type Metrics interface {
@@ -76,6 +78,7 @@ type SequencerIface interface {
 	PlanNextSequencerAction() time.Duration
 	RunNextSequencerAction(ctx context.Context) (*eth.ExecutionPayload, error)
 	BuildingOnto() eth.L2BlockRef
+	SignStateRoot(ctx context.Context, blockNum uint64) (*[65]byte, error)
 }
 
 type Network interface {
@@ -103,7 +106,7 @@ type AltSync interface {
 }
 
 // NewDriver composes an events handler that tracks L1 state, triggers L2 derivation, and optionally sequences new L2 blocks.
-func NewDriver(driverCfg *Config, cfg *rollup.Config, l2 L2Chain, l1 L1Chain, altSync AltSync, network Network, log log.Logger, snapshotLog log.Logger, metrics Metrics) *Driver {
+func NewDriver(driverCfg *Config, cfg *rollup.Config, l2 L2Chain, l1 L1Chain, altSync AltSync, network Network, log log.Logger, snapshotLog log.Logger, metrics Metrics, signers []p2p.SignerSetup) *Driver {
 	l1 = NewMeteredL1Fetcher(l1, metrics)
 	l1State := NewL1State(log, metrics)
 	sequencerConfDepth := NewConfDepth(driverCfg.SequencerConfDepth, l1State.L1Head, l1)
@@ -113,23 +116,39 @@ func NewDriver(driverCfg *Config, cfg *rollup.Config, l2 L2Chain, l1 L1Chain, al
 	attrBuilder := derive.NewFetchingAttributesBuilder(cfg, l1, l2)
 	engine := derivationPipeline
 	meteredEngine := NewMeteredEngine(cfg, engine, metrics, log)
-	sequencer := NewSequencer(log, cfg, meteredEngine, attrBuilder, findL1Origin, metrics)
+
+	// sequencer := NewSequencer(log, cfg, meteredEngine, attrBuilder, findL1Origin, metrics)
+
+	sequencers := make([]SequencerIface, len(signers))
+	for i, s := range signers {
+		// TODO: 2525 review context
+		signer, err := s.SetupSigner(context.Background())
+		if err != nil {
+			log.Error("Error setup signer", "err", err)
+			return nil
+		}
+		address, _ := signer.GetAddress()
+
+		// TODO: 2525 set rollup client
+		sequencers[i] = NewSequencer(log, cfg, meteredEngine, attrBuilder, findL1Origin, metrics, address, signer, &sources.RollupClient{})
+	}
 
 	return &Driver{
-		l1State:          l1State,
-		derivation:       derivationPipeline,
-		stateReq:         make(chan chan struct{}),
-		forceReset:       make(chan chan struct{}, 10),
-		startSequencer:   make(chan hashAndErrorChannel, 10),
-		stopSequencer:    make(chan chan hashAndError, 10),
-		config:           cfg,
-		driverConfig:     driverCfg,
-		done:             make(chan struct{}),
-		log:              log,
-		snapshotLog:      snapshotLog,
-		l1:               l1,
-		l2:               l2,
-		sequencer:        sequencer,
+		l1State:        l1State,
+		derivation:     derivationPipeline,
+		stateReq:       make(chan chan struct{}),
+		forceReset:     make(chan chan struct{}, 10),
+		startSequencer: make(chan hashAndErrorChannel, 10),
+		stopSequencer:  make(chan chan hashAndError, 10),
+		config:         cfg,
+		driverConfig:   driverCfg,
+		done:           make(chan struct{}),
+		log:            log,
+		snapshotLog:    snapshotLog,
+		l1:             l1,
+		l2:             l2,
+		// sequencer:        sequencer,
+		sequencers:       sequencers,
 		network:          network,
 		metrics:          metrics,
 		l1HeadSig:        make(chan eth.L1BlockRef, 10),
