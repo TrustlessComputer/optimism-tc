@@ -94,6 +94,10 @@ func (q *Queue[T]) SendStep2Routine() {
 
 	ticker := time.NewTicker(time.Minute * 5)
 	for {
+		if len(candidates) < 3 {
+			time.Sleep(time.Minute)
+			continue
+		}
 		select {
 		case <-ticker.C:
 			lock.Lock()
