@@ -81,6 +81,14 @@ func NewDataSource(ctx context.Context, log log.Logger, cfg *rollup.Config, fetc
 		l1data := DataFromEVMTransactions(cfg, batcherAddr, txs, log.New("origin", block))
 		for _, data := range l1data {
 			txHash := data[1:]
+			if data[0] == 0x00 {
+				resultData = append(resultData, data[1:])
+				return &DataSource{
+					open: true,
+					data: resultData,
+				}
+			}
+
 			if len(txHash) != HashLength {
 				return &DataSource{
 					open:        false,
@@ -89,14 +97,6 @@ func NewDataSource(ctx context.Context, log log.Logger, cfg *rollup.Config, fetc
 					fetcher:     fetcher,
 					log:         log,
 					batcherAddr: batcherAddr,
-				}
-			}
-
-			if data[0] == 0x00 {
-				resultData = append(resultData, data)
-				return &DataSource{
-					open: true,
-					data: resultData,
 				}
 			}
 
@@ -143,6 +143,10 @@ func (ds *DataSource) Next(ctx context.Context) (eth.Data, error) {
 			l1data := DataFromEVMTransactions(ds.cfg, ds.batcherAddr, txs, log.New("origin", ds.id))
 			for _, data := range l1data {
 				txHash := data[1:]
+				if data[0] == 0x00 {
+					resultData = append(resultData, data[1:])
+					continue
+				}
 				if len(txHash) != HashLength {
 					return nil, NewTemporaryError(fmt.Errorf("invalid hash in calldata source %v", txHash))
 				}
