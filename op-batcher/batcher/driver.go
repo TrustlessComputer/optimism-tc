@@ -410,6 +410,8 @@ func (l *BatchSubmitter) sendTransaction(txdata txData, queue *txmgr.Queue[txDat
 		candidate.TxData = append([]byte{0}, data...)
 		candidate.GasLimit = intrinsicGas * 2
 		queue.Send(txdata, candidate, receiptsCh)
+	} else if l.DaType == "CELESTIA" {
+		queue.StoreOnCelestia(txdata, candidate, receiptsCh)
 	} else {
 		queue.Send2Step(txdata, candidate, receiptsCh)
 	}
