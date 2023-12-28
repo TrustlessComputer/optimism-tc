@@ -3,6 +3,7 @@ cd /app
 
 echo "TCHOST" $TCHOST
 echo 'DA_RPC' $DA_RPC
+echo 'CELESTIA' $CELESTIA
 
 if [ "$P2PPORT" == "" ]; then
     P2PPORT=9003

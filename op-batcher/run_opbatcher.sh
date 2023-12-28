@@ -5,6 +5,7 @@ echo "TCHOST" $TCHOST
 echo "GETH_HOST" $GETH_HOST
 echo "OPNODE_HOST" $OPNODE_HOST
 echo "DA_RPC" $DA_RPC
+echo "CELESTIA" $CELESTIA
 
 DACONFIRM=20
 
@@ -15,8 +16,6 @@ fi
 if [ "$DA_TYPE" == "BTC" ]; then
     DACONFIRM=1
 fi
-
-
 
 ./bin/op-batcher \
       --l2-eth-rpc=$GETH_HOST \

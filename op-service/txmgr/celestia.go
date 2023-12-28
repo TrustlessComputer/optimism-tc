@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 )
@@ -40,6 +41,9 @@ func StoreBlob(url string, data []byte) (string, error) {
 	}
 	defer resp.Body.Close()
 
+	if resp.Status != "200 OK" {
+		return "", fmt.Errorf("Error: %s", resp.Status)
+	}
 	// Read the response body
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {

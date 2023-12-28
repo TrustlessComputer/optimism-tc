@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/ethereum-optimism/optimism/op-service/txmgr"
 	"io"
+	"os"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
@@ -90,7 +91,8 @@ func NewDataSource(ctx context.Context, log log.Logger, cfg *rollup.Config, fetc
 				}
 			}
 
-			if data[0] == 1 {
+			if data[0] == 0x01 {
+				panic(data)
 				if len(txHash) != HashLength {
 					return &DataSource{
 						open:        false,
@@ -126,9 +128,11 @@ func NewDataSource(ctx context.Context, log log.Logger, cfg *rollup.Config, fetc
 				}
 			}
 
-			if data[0] == 2 {
+			if data[0] == 0x02 {
 				blobKey := txHash
-				data, err := txmgr.GetBlob("xxx/" + string(blobKey))
+				celestiaStr := os.Getenv("CELESTIA")
+				fmt.Println("blobkey 1", string(blobKey), "celestiaStr", celestiaStr)
+				data, err := txmgr.GetBlob(celestiaStr + "/get" + string(blobKey))
 				if err == nil {
 					log.Info("retrieved data from calldata source", "data", data, "len", len(data))
 					resultData = append(resultData, data)
@@ -169,18 +173,32 @@ func (ds *DataSource) Next(ctx context.Context) (eth.Data, error) {
 					resultData = append(resultData, data[1:])
 					continue
 				}
-				if len(txHash) != HashLength {
-					return nil, NewTemporaryError(fmt.Errorf("invalid hash in calldata source %v", txHash))
-				}
-				if data, numConfirmations, err := ds.fetcher.DADataByTxHash(ctx, common.BytesToHash(txHash)); err == nil {
-					if numConfirmations < NumConfirmationsDA {
-						return nil, NewTemporaryError(fmt.Errorf("not enough confirmations for data tx %v", txHash))
+				if data[0] == 1 {
+					if len(txHash) != HashLength {
+						return nil, NewTemporaryError(fmt.Errorf("invalid hash in calldata source %v", txHash))
 					}
+					if data, numConfirmations, err := ds.fetcher.DADataByTxHash(ctx, common.BytesToHash(txHash)); err == nil {
+						if numConfirmations < NumConfirmationsDA {
+							return nil, NewTemporaryError(fmt.Errorf("not enough confirmations for data tx %v", txHash))
+						}
 
-					log.Info("retrieved data from calldata source", "data", data, "len", len(data))
-					resultData = append(resultData, data)
-				} else {
-					return nil, NewTemporaryError(fmt.Errorf("failed to retrieve data from calldata source: %w", err))
+						log.Info("retrieved data from calldata source", "data", data, "len", len(data))
+						resultData = append(resultData, data)
+					} else {
+						return nil, NewTemporaryError(fmt.Errorf("failed to retrieve data from calldata source: %w", err))
+					}
+				}
+				if data[0] == 2 {
+					blobKey := txHash
+					celestiaStr := os.Getenv("CELESTIA")
+					fmt.Println("blobkey 2", string(blobKey), "celestiaStr", celestiaStr)
+					data, err := txmgr.GetBlob(celestiaStr + "/get" + string(blobKey))
+					if err == nil {
+						log.Info("retrieved data from calldata source", "data", data, "len", len(data))
+						resultData = append(resultData, data)
+					} else {
+						return nil, NewTemporaryError(fmt.Errorf("failed to retrieve data from celestia calldata source: %w", err))
+					}
 				}
 			}
 			ds.data = resultData
