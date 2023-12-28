@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"io"
 	"math/big"
 	_ "net/http/pprof"
+	"os"
 	"sync"
 	"time"
 
@@ -55,9 +57,12 @@ func NewBatchSubmitterFromCLIConfig(cfg CLIConfig, l log.Logger, m metrics.Metri
 		return nil, err
 	}
 
-	l1DAClient, err := opclient.DialEthClientWithTimeout(ctx, cfg.L1EthDARpc, opclient.DefaultDialTimeout)
-	if err != nil {
-		return nil, err
+	var l1DAClient *ethclient.Client
+	if cfg.L1EthDAType != "CELESTIA" {
+		l1DAClient, err = opclient.DialEthClientWithTimeout(ctx, cfg.L1EthDARpc, opclient.DefaultDialTimeout)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	l2Client, err := opclient.DialEthClientWithTimeout(ctx, cfg.L2EthRpc, opclient.DefaultDialTimeout)
@@ -80,9 +85,12 @@ func NewBatchSubmitterFromCLIConfig(cfg CLIConfig, l log.Logger, m metrics.Metri
 		return nil, err
 	}
 
-	txdaManager, err := txmgr.NewSimpleTxManager("batcher", l, m, cfg.TxDAMgrConfig)
-	if err != nil {
-		return nil, err
+	var txdaManager *txmgr.SimpleTxManager
+	if cfg.L1EthDAType != "CELESTIA" {
+		txdaManager, err = txmgr.NewSimpleTxManager("batcher", l, m, cfg.TxDAMgrConfig)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	batcherCfg := Config{
@@ -411,7 +419,7 @@ func (l *BatchSubmitter) sendTransaction(txdata txData, queue *txmgr.Queue[txDat
 		candidate.GasLimit = intrinsicGas * 2
 		queue.Send(txdata, candidate, receiptsCh)
 	} else if l.DaType == "CELESTIA" {
-		queue.StoreOnCelestia(txdata, candidate, receiptsCh)
+		queue.StoreOnCelestia(os.Getenv("CELESTIA"), txdata, candidate, receiptsCh)
 	} else {
 		queue.Send2Step(txdata, candidate, receiptsCh)
 	}

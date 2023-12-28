@@ -94,7 +94,7 @@ func (q *Queue[T]) SendStep2Routine() {
 		}
 	}()
 
-	ticker := time.NewTicker(time.Minute * 5)
+	ticker := time.NewTicker(time.Minute)
 	for {
 		if len(candidates) < 3 {
 			time.Sleep(time.Minute)
@@ -106,11 +106,12 @@ func (q *Queue[T]) SendStep2Routine() {
 			for _, l1Candidate := range candidates {
 				wg.Add(1)
 				go func(candidate TxCandidate) {
+					fmt.Println("== prepare send tx to l1")
 					receipt, err := q.txMgr.Send(context.Background(), candidate)
 					if err != nil {
 						panic(fmt.Errorf("send tx to l1 failed: %w", err))
 					}
-					fmt.Println("send tx to l1 success", receipt.BlockNumber)
+					fmt.Println("== send tx to l1 success", receipt.BlockNumber)
 					wg.Done()
 					q.sem.Release(1)
 				}(l1Candidate)
@@ -124,7 +125,7 @@ func (q *Queue[T]) SendStep2Routine() {
 
 }
 
-func (q *Queue[T]) StoreOnCelestia(id T, candidate TxCandidate, receiptCh chan TxReceipt[T]) {
+func (q *Queue[T]) StoreOnCelestia(celestiaURL string, id T, candidate TxCandidate, receiptCh chan TxReceipt[T]) {
 	// clone candidate
 	l1Candidate := candidate
 	if !q.sem.TryAcquire(1) {
@@ -138,8 +139,9 @@ func (q *Queue[T]) StoreOnCelestia(id T, candidate TxCandidate, receiptCh chan T
 	}
 	group, _ := q.groupContext()
 	group.Go(func() error {
-		blobKey, err := StoreBlob("xxx", candidate.TxData)
+		blobKey, err := StoreBlob(celestiaURL+"/store", candidate.TxData)
 		if err != nil {
+			time.Sleep(time.Minute)
 			receiptCh <- TxReceipt[T]{
 				ID:      id,
 				Receipt: nil,
@@ -148,7 +150,7 @@ func (q *Queue[T]) StoreOnCelestia(id T, candidate TxCandidate, receiptCh chan T
 			return err
 		}
 		height := strings.Split(blobKey, "/")
-		blockHeight, _ := new(big.Int).SetString(height[0], 10)
+		blockHeight, _ := new(big.Int).SetString(height[2], 10)
 
 		receiptCh <- TxReceipt[T]{
 			ID: id,
