@@ -58,7 +58,7 @@ func NewBatchSubmitterFromCLIConfig(cfg CLIConfig, l log.Logger, m metrics.Metri
 	}
 
 	var l1DAClient *ethclient.Client
-	if cfg.L1EthDAType != "CELESTIA" {
+	if cfg.L1EthDAType != "DA_SERVER" {
 		l1DAClient, err = opclient.DialEthClientWithTimeout(ctx, cfg.L1EthDARpc, opclient.DefaultDialTimeout)
 		if err != nil {
 			return nil, err
@@ -86,7 +86,7 @@ func NewBatchSubmitterFromCLIConfig(cfg CLIConfig, l log.Logger, m metrics.Metri
 	}
 
 	var txdaManager *txmgr.SimpleTxManager
-	if cfg.L1EthDAType != "CELESTIA" {
+	if cfg.L1EthDAType != "DA_SERVER" {
 		txdaManager, err = txmgr.NewSimpleTxManager("batcher", l, m, cfg.TxDAMgrConfig)
 		if err != nil {
 			return nil, err
@@ -418,8 +418,8 @@ func (l *BatchSubmitter) sendTransaction(txdata txData, queue *txmgr.Queue[txDat
 		candidate.TxData = append([]byte{0}, data...)
 		candidate.GasLimit = intrinsicGas * 2
 		queue.Send(txdata, candidate, receiptsCh)
-	} else if l.DaType == "CELESTIA" {
-		queue.StoreOnCelestia(os.Getenv("CELESTIA"), txdata, candidate, receiptsCh)
+	} else if l.DaType == "DA_SERVER" {
+		queue.StoreOnDaServer(os.Getenv("DA_SERVER"), txdata, candidate, receiptsCh)
 	} else {
 		queue.Send2Step(txdata, candidate, receiptsCh)
 	}

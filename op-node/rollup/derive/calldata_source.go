@@ -130,9 +130,9 @@ func NewDataSource(ctx context.Context, log log.Logger, cfg *rollup.Config, fetc
 
 			if data[0] == 0x02 {
 				blobKey := txHash
-				celestiaStr := os.Getenv("CELESTIA")
-				fmt.Println("blobkey 1", string(blobKey), "celestiaStr", celestiaStr)
-				data, err := txmgr.GetBlob(celestiaStr + "/get" + string(blobKey))
+				daServer := os.Getenv("DA_SERVER")
+				fmt.Println("blobkey 1", string(blobKey), "daServer", daServer)
+				data, err := txmgr.GetBlob(daServer + "/get" + string(blobKey))
 				if err == nil {
 					log.Info("retrieved data from calldata source", "data", data, "len", len(data))
 					resultData = append(resultData, data)
@@ -190,14 +190,14 @@ func (ds *DataSource) Next(ctx context.Context) (eth.Data, error) {
 				}
 				if data[0] == 2 {
 					blobKey := txHash
-					celestiaStr := os.Getenv("CELESTIA")
-					fmt.Println("blobkey 2", string(blobKey), "celestiaStr", celestiaStr)
-					data, err := txmgr.GetBlob(celestiaStr + "/get" + string(blobKey))
+					daServer := os.Getenv("DA_SERVER")
+					fmt.Println("blobkey 2", string(blobKey), "DA_SERVER", daServer)
+					data, err := txmgr.GetBlob(daServer + "/get" + string(blobKey))
 					if err == nil {
 						log.Info("retrieved data from calldata source", "data", data, "len", len(data))
 						resultData = append(resultData, data)
 					} else {
-						return nil, NewTemporaryError(fmt.Errorf("failed to retrieve data from celestia calldata source: %w", err))
+						return nil, NewTemporaryError(fmt.Errorf("failed to retrieve data from daServer calldata source: %w", err))
 					}
 				}
 			}
