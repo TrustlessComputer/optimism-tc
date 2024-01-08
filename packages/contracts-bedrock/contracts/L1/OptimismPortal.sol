@@ -438,6 +438,8 @@ contract OptimismPortal is Initializable, ResourceMetering, Semver {
         bool _isCreation,
         bytes memory _data
     ) public payable metered(_gasLimit) {
+        require(_value == 0, "OptimismPortal: deposit native token not supported");
+
         // Just to be safe, make sure that people specify address(0) as the target when doing
         // contract creations.
         if (_isCreation) {
