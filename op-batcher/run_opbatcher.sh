@@ -4,8 +4,8 @@ cd /app
 echo "TCHOST" $TCHOST
 echo "GETH_HOST" $GETH_HOST
 echo "OPNODE_HOST" $OPNODE_HOST
-echo "DA_RPC" $DA_RPC
-echo "DA_SERVER" $DA_SERVER
+
+
 
 DACONFIRM=20
 
@@ -15,7 +15,21 @@ fi
 
 if [ "$DA_TYPE" == "BTC" ]; then
     DACONFIRM=1
+    DA_RPC=$TCHOST
 fi
+
+if [ "$DA_TYPE" == "POLYGON" ]; then
+    DA_RPC=$POLYGON
+fi
+
+#BTC | POLYGON | CELESTIA | EIGEN
+echo "DA_TYPE" $DA_TYPE
+echo "POLYGON" $POLYGON
+echo "CELESTIA" $CELESTIA
+echo "EIGEN" $EIGEN
+
+#legacy config
+echo "DA_RPC" $DA_RPC
 
 ./bin/op-batcher \
       --l2-eth-rpc=$GETH_HOST \

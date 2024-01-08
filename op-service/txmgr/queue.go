@@ -125,7 +125,7 @@ func (q *Queue[T]) SendStep2Routine() {
 
 }
 
-func (q *Queue[T]) StoreOnDaServer(daServer string, id T, candidate TxCandidate, receiptCh chan TxReceipt[T]) {
+func (q *Queue[T]) StoreOnDaServer(daServer string, prefixByte byte, id T, candidate TxCandidate, receiptCh chan TxReceipt[T]) {
 	// clone candidate
 	l1Candidate := candidate
 	if !q.sem.TryAcquire(1) {
@@ -161,7 +161,7 @@ func (q *Queue[T]) StoreOnDaServer(daServer string, id T, candidate TxCandidate,
 			Err: err,
 		}
 
-		l1Candidate.TxData = append([]byte{2}, blobKey...)
+		l1Candidate.TxData = append([]byte{prefixByte}, blobKey...)
 		q.daConfirmedReceiptQueue <- l1Candidate
 
 		return err
