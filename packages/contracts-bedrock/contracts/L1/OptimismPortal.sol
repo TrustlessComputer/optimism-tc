@@ -505,7 +505,7 @@ contract OptimismPortal is Initializable, ResourceMetering, Semver {
         // We use opaque data so that we can update the TransactionDeposited event in the future
         // without breaking the current interface.
         bytes memory opaqueData = abi.encodePacked(
-            msg.value,
+            _value > 0 && !isMinted ? _value : msg.value,
             _value,
             _gasLimit,
             _isCreation,
