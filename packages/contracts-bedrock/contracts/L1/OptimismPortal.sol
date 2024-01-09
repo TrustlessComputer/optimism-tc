@@ -186,9 +186,10 @@ contract OptimismPortal is Initializable, ResourceMetering, Semver {
     /// @notice Only mint once.
     function preMint() external {
         require(!isMinted, "OptimismPortal: minted");
-        isMinted = true;
-
         depositTransaction_(GENESIS_ACCOUNT, MINT_AMOUNT, RECEIVE_DEFAULT_GAS_LIMIT, false, bytes(""));
+
+        // update minted
+        isMinted = true;
     }
 
     /**
