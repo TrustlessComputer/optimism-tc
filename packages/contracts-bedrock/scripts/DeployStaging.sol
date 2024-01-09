@@ -6,6 +6,7 @@ import { Proxy } from "../contracts/universal/Proxy.sol";
 import { ProxyAdmin } from "../contracts/universal/ProxyAdmin.sol";
 import "./interfaces/IGnosisSafe.sol";
 import "../contracts/L1/OptimismPortal.sol";
+import "../contracts/L1/extensions/OptimismPortalBlockNativeMint.sol";
 import "../contracts/deployment/SystemDictator.sol";
 
 contract TestUpgradeBridgeL1 is Script {
@@ -24,9 +25,9 @@ contract TestUpgradeBridgeL1 is Script {
 
         // @notice upgrade for portal contract
         OptimismPortal optimismPortal = OptimismPortal(portal);
-        OptimismPortal newOptimismPortal = new OptimismPortal(optimismPortal.L2_ORACLE(), optimismPortal.GUARDIAN(), optimismPortal.paused(),  optimismPortal.SYSTEM_CONFIG(), genesisAccount, mintAmount);
+        OptimismPortalBlockNativeMint newOptimismPortal = new OptimismPortalBlockNativeMint(optimismPortal.L2_ORACLE(), optimismPortal.GUARDIAN(), optimismPortal.paused(),  optimismPortal.SYSTEM_CONFIG(), genesisAccount, mintAmount);
         proxyAdmin.upgrade(portal, address(newOptimismPortal));
-        optimismPortal.preMint();
+        OptimismPortalBlockNativeMint(portal).preMint();
 
         vm.stopBroadcast();
     }

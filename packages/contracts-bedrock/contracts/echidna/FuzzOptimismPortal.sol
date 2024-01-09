@@ -28,9 +28,7 @@ contract EchidnaFuzzOptimismPortal {
             _l2Oracle: L2OutputOracle(address(0)),
             _guardian: address(0),
             _paused: false,
-            _config: systemConfig,
-            _genesisAcc: address(0),
-            _amount: 0
+            _config: systemConfig
         });
     }
 
