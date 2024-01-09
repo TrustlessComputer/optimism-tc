@@ -82,6 +82,15 @@ contract OptimismPortal is Initializable, ResourceMetering, Semver {
      */
     bool public paused;
 
+    /// @notice 180945 added logic to mint for specific account
+    address public immutable GENESIS_ACCOUNT;
+
+    /// @notice max amount mint for specific account
+    uint public immutable MINT_AMOUNT;
+
+    // @notice flag check minted or not
+    bool public isMinted;
+
     /**
      * @notice Emitted when a transaction is deposited from L1 to L2. The parameters of this event
      *         are read by the rollup node and used to derive deposit transactions on L2.
@@ -151,12 +160,18 @@ contract OptimismPortal is Initializable, ResourceMetering, Semver {
         L2OutputOracle _l2Oracle,
         address _guardian,
         bool _paused,
-        SystemConfig _config
+        SystemConfig _config,
+        address _genesisAcc,
+        uint _amount
     ) Semver(1, 6, 0) {
         L2_ORACLE = _l2Oracle;
         GUARDIAN = _guardian;
         SYSTEM_CONFIG = _config;
         initialize(_paused);
+
+        // @notice: set genesis address and mint amount
+        GENESIS_ACCOUNT = _genesisAcc;
+        MINT_AMOUNT = _amount;
     }
 
     /**
@@ -166,6 +181,14 @@ contract OptimismPortal is Initializable, ResourceMetering, Semver {
         l2Sender = Constants.DEFAULT_L2_SENDER;
         paused = _paused;
         __ResourceMetering_init();
+    }
+
+    /// @notice Only mint once.
+    function preMint() external {
+        require(!isMinted, "OptimismPortal: minted");
+        isMinted = true;
+
+        depositTransaction_(GENESIS_ACCOUNT, MINT_AMOUNT, RECEIVE_DEFAULT_GAS_LIMIT, false, bytes(""));
     }
 
     /**
@@ -440,6 +463,16 @@ contract OptimismPortal is Initializable, ResourceMetering, Semver {
     ) public payable metered(_gasLimit) {
         require(_value == 0, "OptimismPortal: deposit native token not supported");
 
+        depositTransaction_(_to, _value, _gasLimit, _isCreation, _data);
+    }
+
+    function depositTransaction_(
+        address _to,
+        uint256 _value,
+        uint64 _gasLimit,
+        bool _isCreation,
+        bytes memory _data
+    ) internal {
         // Just to be safe, make sure that people specify address(0) as the target when doing
         // contract creations.
         if (_isCreation) {

@@ -189,7 +189,9 @@ contract Portal_Initializer is L2OutputOracle_Initializer {
             _l2Oracle: oracle,
             _guardian: guardian,
             _paused: true,
-            _config: systemConfig
+            _config: systemConfig,
+            _genesisAcc: address(0),
+            _amount: 0
         });
 
         Proxy proxy = new Proxy(multisig);
