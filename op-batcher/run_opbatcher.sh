@@ -15,11 +15,6 @@ fi
 
 if [ "$DA_TYPE" == "BTC" ]; then
     DACONFIRM=1
-    DA_RPC=$TCHOST
-fi
-
-if [ "$DA_TYPE" == "POLYGON" ]; then
-    DA_RPC=$POLYGON
 fi
 
 #BTC | POLYGON | CELESTIA | EIGEN
@@ -28,8 +23,6 @@ echo "POLYGON" $POLYGON
 echo "CELESTIA" $CELESTIA
 echo "EIGEN" $EIGEN
 
-#legacy config
-echo "DA_RPC" $DA_RPC
 
 ./bin/op-batcher \
       --l2-eth-rpc=$GETH_HOST \
@@ -46,7 +39,7 @@ echo "DA_RPC" $DA_RPC
       --max-channel-duration=1 \
       --l1-eth-rpc=$TCHOST \
       --log.level=debug \
-      --l1-da-rpc=$DA_RPC \
+      --l1-da-rpc=$POLYGON \
       --l1-da-type=$DA_TYPE \
       --num-confirmations-da=$DACONFIRM \
       --private-key=$BatcherPriv 2>&1 | cronolog $PWD/resources/logs/%Y-%m-%d.log
