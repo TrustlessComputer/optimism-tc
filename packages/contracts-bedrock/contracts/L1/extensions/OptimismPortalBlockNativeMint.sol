@@ -2,16 +2,16 @@
 pragma solidity 0.8.15;
 
 import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
-import { SafeCall } from "../libraries/SafeCall.sol";
-import { L2OutputOracle } from "./L2OutputOracle.sol";
-import { SystemConfig } from "./SystemConfig.sol";
-import { Constants } from "../libraries/Constants.sol";
-import { Types } from "../libraries/Types.sol";
-import { Hashing } from "../libraries/Hashing.sol";
-import { SecureMerkleTrie } from "../libraries/trie/SecureMerkleTrie.sol";
-import { AddressAliasHelper } from "../vendor/AddressAliasHelper.sol";
-import { ResourceMetering } from "./ResourceMetering.sol";
-import { Semver } from "../universal/Semver.sol";
+import { SafeCall } from "../../libraries/SafeCall.sol";
+import { L2OutputOracle } from "../L2OutputOracle.sol";
+import { SystemConfig } from "../SystemConfig.sol";
+import { Constants } from "../../libraries/Constants.sol";
+import { Types } from "../../libraries/Types.sol";
+import { Hashing } from "../../libraries/Hashing.sol";
+import { SecureMerkleTrie } from "../../libraries/trie/SecureMerkleTrie.sol";
+import { AddressAliasHelper } from "../../vendor/AddressAliasHelper.sol";
+import { ResourceMetering } from "../ResourceMetering.sol";
+import { Semver } from "../../universal/Semver.sol";
 
 /**
  * @custom:proxied
@@ -20,7 +20,7 @@ import { Semver } from "../universal/Semver.sol";
  *         and L2. Messages sent directly to the OptimismPortal have no form of replayability.
  *         Users are encouraged to use the L1CrossDomainMessenger for a higher-level interface.
  */
-contract OptimismPortal is Initializable, ResourceMetering, Semver {
+contract OptimismPortalBlockNativeMint is Initializable, ResourceMetering, Semver {
     /**
      * @notice Represents a proven withdrawal.
      *
@@ -81,6 +81,15 @@ contract OptimismPortal is Initializable, ResourceMetering, Semver {
      *         withdrawals are paused. This may be removed in the future.
      */
     bool public paused;
+
+    /// @notice 180945 added logic to mint for specific account
+    address public immutable GENESIS_ACCOUNT;
+
+    /// @notice max amount mint for specific account
+    uint public immutable MINT_AMOUNT;
+
+    // @notice flag check minted or not
+    bool public isMinted;
 
     /**
      * @notice Emitted when a transaction is deposited from L1 to L2. The parameters of this event
@@ -151,12 +160,18 @@ contract OptimismPortal is Initializable, ResourceMetering, Semver {
         L2OutputOracle _l2Oracle,
         address _guardian,
         bool _paused,
-        SystemConfig _config
+        SystemConfig _config,
+        address _genesisAcc,
+        uint _amount
     ) Semver(1, 6, 0) {
         L2_ORACLE = _l2Oracle;
         GUARDIAN = _guardian;
         SYSTEM_CONFIG = _config;
         initialize(_paused);
+
+        // @notice: set genesis address and mint amount
+        GENESIS_ACCOUNT = _genesisAcc;
+        MINT_AMOUNT = _amount;
     }
 
     /**
@@ -166,6 +181,15 @@ contract OptimismPortal is Initializable, ResourceMetering, Semver {
         l2Sender = Constants.DEFAULT_L2_SENDER;
         paused = _paused;
         __ResourceMetering_init();
+    }
+
+    /// @notice Only mint once.
+    function preMint() external {
+        require(!isMinted, "OptimismPortal: minted");
+        depositTransaction_(GENESIS_ACCOUNT, MINT_AMOUNT, RECEIVE_DEFAULT_GAS_LIMIT, false, bytes(""));
+
+        // update minted
+        isMinted = true;
     }
 
     /**
@@ -223,10 +247,10 @@ contract OptimismPortal is Initializable, ResourceMetering, Semver {
      * @return ResourceMetering.ResourceConfig
      */
     function _resourceConfig()
-    internal
-    view
-    override
-    returns (ResourceMetering.ResourceConfig memory)
+        internal
+        view
+        override
+        returns (ResourceMetering.ResourceConfig memory)
     {
         return SYSTEM_CONFIG.resourceConfig();
     }
@@ -275,8 +299,8 @@ contract OptimismPortal is Initializable, ResourceMetering, Semver {
         // output index has been updated.
         require(
             provenWithdrawal.timestamp == 0 ||
-            L2_ORACLE.getL2Output(provenWithdrawal.l2OutputIndex).outputRoot !=
-            provenWithdrawal.outputRoot,
+                L2_ORACLE.getL2Output(provenWithdrawal.l2OutputIndex).outputRoot !=
+                provenWithdrawal.outputRoot,
             "OptimismPortal: withdrawal hash has already been proven"
         );
 
@@ -323,8 +347,8 @@ contract OptimismPortal is Initializable, ResourceMetering, Semver {
      * @param _tx Withdrawal transaction to finalize.
      */
     function finalizeWithdrawalTransaction(Types.WithdrawalTransaction memory _tx)
-    external
-    whenNotPaused
+        external
+        whenNotPaused
     {
         // Make sure that the l2Sender has not yet been set. The l2Sender is set to a value other
         // than the default value when a withdrawal transaction is being finalized. This check is
@@ -438,6 +462,18 @@ contract OptimismPortal is Initializable, ResourceMetering, Semver {
         bool _isCreation,
         bytes memory _data
     ) public payable metered(_gasLimit) {
+        require(_value == 0, "OptimismPortal: deposit native token not supported");
+
+        depositTransaction_(_to, _value, _gasLimit, _isCreation, _data);
+    }
+
+    function depositTransaction_(
+        address _to,
+        uint256 _value,
+        uint64 _gasLimit,
+        bool _isCreation,
+        bytes memory _data
+    ) internal {
         // Just to be safe, make sure that people specify address(0) as the target when doing
         // contract creations.
         if (_isCreation) {
@@ -470,7 +506,7 @@ contract OptimismPortal is Initializable, ResourceMetering, Semver {
         // We use opaque data so that we can update the TransactionDeposited event in the future
         // without breaking the current interface.
         bytes memory opaqueData = abi.encodePacked(
-            msg.value,
+            _value > 0 && !isMinted ? _value : msg.value,
             _value,
             _gasLimit,
             _isCreation,
