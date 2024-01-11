@@ -12,15 +12,15 @@ import "../contracts/deployment/SystemDictator.sol";
 contract TestUpgradeBridgeL1 is Script {
     // todo replace address
     // @notice config L1 side
-    ProxyAdmin proxyAdmin = ProxyAdmin(payable(0x9C1b7B02C49F27dFFA61daB94C3B8Ad0Bd4548a6));
-    address payable portal = payable(0xC5761216F0f11c8022206E4EB38d5AC319782892);
+    ProxyAdmin proxyAdmin = ProxyAdmin(payable(vm.envAddress("PROXY_ADMIN")));
+    address payable portal = payable(vm.envAddress("PORTAL"));
 
     // @notice config for L2
-    address genesisAccount = address(0x4784B721d0D0aFe9b865C88369d140Fe6f7BC1eb);
-    uint mintAmount = 21 * 1e6 * 1e18; // 21 Mil tokens
+    address genesisAccount = vm.envAddress("GENESIS_ACCOUNT");
+    uint mintAmount = vm.envUint("GENESIS_AMOUNT");
 
     function run() public {
-        uint256 deployerPrivateKey = vm.envUint("KEY_1");
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
 
         // @notice upgrade for portal contract
