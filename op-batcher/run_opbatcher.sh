@@ -4,7 +4,25 @@ cd /app
 echo "TCHOST" $TCHOST
 echo "GETH_HOST" $GETH_HOST
 echo "OPNODE_HOST" $OPNODE_HOST
-echo "DA_RPC" $DA_RPC
+
+
+
+DACONFIRM=20
+
+if [ "$DA_TYPE" == "" ]; then
+    DA_TYPE="POLYGON"
+fi
+
+if [ "$DA_TYPE" == "BTC" ]; then
+    DACONFIRM=1
+fi
+
+#BTC | POLYGON | CELESTIA | EIGEN
+echo "DA_TYPE" $DA_TYPE
+echo "POLYGON" $POLYGON
+echo "CELESTIA" $CELESTIA
+echo "EIGEN" $EIGEN
+
 
 ./bin/op-batcher \
       --l2-eth-rpc=$GETH_HOST \
@@ -21,6 +39,7 @@ echo "DA_RPC" $DA_RPC
       --max-channel-duration=1 \
       --l1-eth-rpc=$TCHOST \
       --log.level=debug \
-      --l1-da-rpc=$DA_RPC \
-      --num-confirmations-da=20 \
+      --l1-da-rpc=$POLYGON \
+      --l1-da-type=$DA_TYPE \
+      --num-confirmations-da=$DACONFIRM \
       --private-key=$BatcherPriv 2>&1 | cronolog $PWD/resources/logs/%Y-%m-%d.log

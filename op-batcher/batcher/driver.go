@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"io"
 	"math/big"
 	_ "net/http/pprof"
+	"os"
 	"sync"
 	"time"
 
@@ -55,9 +57,12 @@ func NewBatchSubmitterFromCLIConfig(cfg CLIConfig, l log.Logger, m metrics.Metri
 		return nil, err
 	}
 
-	l1DAClient, err := opclient.DialEthClientWithTimeout(ctx, cfg.L1EthDARpc, opclient.DefaultDialTimeout)
-	if err != nil {
-		return nil, err
+	var l1DAClient *ethclient.Client
+	if cfg.L1EthDAType != "CELESTIA" && cfg.L1EthDAType != "EIGEN" {
+		l1DAClient, err = opclient.DialEthClientWithTimeout(ctx, cfg.L1EthDARpc, opclient.DefaultDialTimeout)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	l2Client, err := opclient.DialEthClientWithTimeout(ctx, cfg.L2EthRpc, opclient.DefaultDialTimeout)
@@ -80,14 +85,18 @@ func NewBatchSubmitterFromCLIConfig(cfg CLIConfig, l log.Logger, m metrics.Metri
 		return nil, err
 	}
 
-	txdaManager, err := txmgr.NewSimpleTxManager("batcher", l, m, cfg.TxDAMgrConfig)
-	if err != nil {
-		return nil, err
+	var txdaManager *txmgr.SimpleTxManager
+	if cfg.L1EthDAType != "CELESTIA" && cfg.L1EthDAType != "EIGEN" {
+		txdaManager, err = txmgr.NewSimpleTxManager("batcher", l, m, cfg.TxDAMgrConfig)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	batcherCfg := Config{
 		L1Client:               l1Client,
 		L1DAClient:             l1DAClient,
+		DaType:                 cfg.L1EthDAType,
 		L2Client:               l2Client,
 		RollupNode:             rollupClient,
 		PollInterval:           cfg.PollInterval,
@@ -405,7 +414,20 @@ func (l *BatchSubmitter) sendTransaction(txdata txData, queue *txmgr.Queue[txDat
 		TxData:   data,
 		GasLimit: intrinsicGas,
 	}
-	queue.Send2Step(txdata, candidate, receiptsCh)
+	if l.DaType == "BTC" {
+		candidate.TxData = append([]byte{0}, data...)
+		candidate.GasLimit = intrinsicGas * 2
+		queue.Send(txdata, candidate, receiptsCh)
+	} else if l.DaType == "POLYGON" {
+		queue.Send2Step(txdata, candidate, receiptsCh)
+	} else if l.DaType == "CELESTIA" {
+		queue.StoreOnDaServer(os.Getenv("CELESTIA"), 2, txdata, candidate, receiptsCh)
+	} else if l.DaType == "EIGEN" {
+		queue.StoreOnDaServer(os.Getenv("EIGEN"), 3, txdata, candidate, receiptsCh)
+	} else {
+		l.log.Error("No DA type specified")
+		return
+	}
 }
 
 func (l *BatchSubmitter) handleReceipt(r txmgr.TxReceipt[txData]) {

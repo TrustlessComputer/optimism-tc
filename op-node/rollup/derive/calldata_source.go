@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/ethereum-optimism/optimism/op-service/txmgr"
 	"io"
+	"os"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
@@ -81,18 +83,16 @@ func NewDataSource(ctx context.Context, log log.Logger, cfg *rollup.Config, fetc
 		l1data := DataFromEVMTransactions(cfg, batcherAddr, txs, log.New("origin", block))
 		for _, data := range l1data {
 			txHash := data[1:]
-			if len(txHash) != HashLength {
+			if data[0] == 0x00 {
+				resultData = append(resultData, data[1:])
 				return &DataSource{
-					open:        false,
-					id:          block,
-					cfg:         cfg,
-					fetcher:     fetcher,
-					log:         log,
-					batcherAddr: batcherAddr,
+					open: true,
+					data: resultData,
 				}
 			}
-			if data, numConfirmations, err := fetcher.DADataByTxHash(ctx, common.BytesToHash(txHash)); err == nil {
-				if numConfirmations < NumConfirmationsDA {
+
+			if data[0] == 0x01 {
+				if len(txHash) != HashLength {
 					return &DataSource{
 						open:        false,
 						id:          block,
@@ -102,18 +102,71 @@ func NewDataSource(ctx context.Context, log log.Logger, cfg *rollup.Config, fetc
 						batcherAddr: batcherAddr,
 					}
 				}
-				log.Info("retrieved data from calldata source", "data", data, "len", len(data))
-				resultData = append(resultData, data)
-			} else {
-				return &DataSource{
-					open:        false,
-					id:          block,
-					cfg:         cfg,
-					fetcher:     fetcher,
-					log:         log,
-					batcherAddr: batcherAddr,
+				if data, numConfirmations, err := fetcher.DADataByTxHash(ctx, common.BytesToHash(txHash)); err == nil {
+					if numConfirmations < NumConfirmationsDA {
+						return &DataSource{
+							open:        false,
+							id:          block,
+							cfg:         cfg,
+							fetcher:     fetcher,
+							log:         log,
+							batcherAddr: batcherAddr,
+						}
+					}
+					log.Info("retrieved data from calldata source", "data", data, "len", len(data))
+					resultData = append(resultData, data)
+				} else {
+					return &DataSource{
+						open:        false,
+						id:          block,
+						cfg:         cfg,
+						fetcher:     fetcher,
+						log:         log,
+						batcherAddr: batcherAddr,
+					}
 				}
 			}
+
+			if data[0] == 0x02 {
+				blobKey := txHash
+				daServer := os.Getenv("CELESTIA")
+				fmt.Println("CELESTIA 1", string(blobKey), "daServer", daServer)
+				data, err := txmgr.GetBlob(daServer + "/get" + string(blobKey))
+				if err == nil {
+					log.Info("retrieved data from calldata source", "data", data, "len", len(data))
+					resultData = append(resultData, data)
+				} else {
+					return &DataSource{
+						open:        false,
+						id:          block,
+						cfg:         cfg,
+						fetcher:     fetcher,
+						log:         log,
+						batcherAddr: batcherAddr,
+					}
+				}
+			}
+
+			if data[0] == 0x03 {
+				blobKey := txHash
+				daServer := os.Getenv("EIGEN")
+				fmt.Println("EIGEN 1", string(blobKey), "daServer", daServer)
+				data, err := txmgr.GetBlob(daServer + "/get" + string(blobKey))
+				if err == nil {
+					log.Info("retrieved data from calldata source", "data", data, "len", len(data))
+					resultData = append(resultData, data)
+				} else {
+					return &DataSource{
+						open:        false,
+						id:          block,
+						cfg:         cfg,
+						fetcher:     fetcher,
+						log:         log,
+						batcherAddr: batcherAddr,
+					}
+				}
+			}
+
 		}
 
 		return &DataSource{
@@ -134,18 +187,48 @@ func (ds *DataSource) Next(ctx context.Context) (eth.Data, error) {
 			l1data := DataFromEVMTransactions(ds.cfg, ds.batcherAddr, txs, log.New("origin", ds.id))
 			for _, data := range l1data {
 				txHash := data[1:]
-				if len(txHash) != HashLength {
-					return nil, NewTemporaryError(fmt.Errorf("invalid hash in calldata source %v", txHash))
+				if data[0] == 0x00 {
+					resultData = append(resultData, data[1:])
+					continue
 				}
-				if data, numConfirmations, err := ds.fetcher.DADataByTxHash(ctx, common.BytesToHash(txHash)); err == nil {
-					if numConfirmations < NumConfirmationsDA {
-						return nil, NewTemporaryError(fmt.Errorf("not enough confirmations for data tx %v", txHash))
+				if data[0] == 1 {
+					if len(txHash) != HashLength {
+						return nil, NewTemporaryError(fmt.Errorf("invalid hash in calldata source %v", txHash))
 					}
+					if data, numConfirmations, err := ds.fetcher.DADataByTxHash(ctx, common.BytesToHash(txHash)); err == nil {
+						if numConfirmations < NumConfirmationsDA {
+							return nil, NewTemporaryError(fmt.Errorf("not enough confirmations for data tx %v", txHash))
+						}
 
-					log.Info("retrieved data from calldata source", "data", data, "len", len(data))
-					resultData = append(resultData, data)
-				} else {
-					return nil, NewTemporaryError(fmt.Errorf("failed to retrieve data from calldata source: %w", err))
+						log.Info("retrieved data from calldata source", "data", data, "len", len(data))
+						resultData = append(resultData, data)
+					} else {
+						return nil, NewTemporaryError(fmt.Errorf("failed to retrieve data from calldata source: %w", err))
+					}
+				}
+				if data[0] == 2 {
+					blobKey := txHash
+					daServer := os.Getenv("CELESTIA")
+					fmt.Println("CELESTIA 2", string(blobKey), "rpc", daServer)
+					data, err := txmgr.GetBlob(daServer + "/get" + string(blobKey))
+					if err == nil {
+						log.Info("retrieved data from calldata source", "data", data, "len", len(data))
+						resultData = append(resultData, data)
+					} else {
+						return nil, NewTemporaryError(fmt.Errorf("failed to retrieve data from daServer calldata source: %w", err))
+					}
+				}
+				if data[0] == 3 {
+					blobKey := txHash
+					daServer := os.Getenv("EIGEN")
+					fmt.Println("EIGEN 2", string(blobKey), "rpc", daServer)
+					data, err := txmgr.GetBlob(daServer + "/get" + string(blobKey))
+					if err == nil {
+						log.Info("retrieved data from calldata source", "data", data, "len", len(data))
+						resultData = append(resultData, data)
+					} else {
+						return nil, NewTemporaryError(fmt.Errorf("failed to retrieve data from daServer calldata source: %w", err))
+					}
 				}
 			}
 			ds.data = resultData

@@ -24,6 +24,7 @@ type Config struct {
 	metr        metrics.Metricer
 	L1Client    *ethclient.Client
 	L1DAClient  *ethclient.Client
+	DaType      string
 	L2Client    *ethclient.Client
 	RollupNode  *sources.RollupClient
 	TxManager   txmgr.TxManager
@@ -53,8 +54,9 @@ func (c *Config) Check() error {
 
 type CLIConfig struct {
 	// L1EthRpc is the HTTP provider URL for L1.
-	L1EthRpc   string
-	L1EthDARpc string
+	L1EthRpc    string
+	L1EthDARpc  string
+	L1EthDAType string
 
 	// L2EthRpc is the HTTP provider URL for the L2 execution engine.
 	L2EthRpc string
@@ -125,6 +127,7 @@ func NewConfig(ctx *cli.Context) CLIConfig {
 		L1EthRpc:        ctx.GlobalString(flags.L1EthRpcFlag.Name),
 		L2EthRpc:        ctx.GlobalString(flags.L2EthRpcFlag.Name),
 		L1EthDARpc:      ctx.GlobalString(flags.L1EthDARpcFlag.Name),
+		L1EthDAType:     ctx.GlobalString(flags.L1EthDATypeFlag.Name),
 		RollupRpc:       ctx.GlobalString(flags.RollupRpcFlag.Name),
 		SubSafetyMargin: ctx.GlobalUint64(flags.SubSafetyMarginFlag.Name),
 		PollInterval:    ctx.GlobalDuration(flags.PollIntervalFlag.Name),
