@@ -2,7 +2,13 @@
 cd /app
 
 echo "TCHOST" $TCHOST
-echo 'DA_RPC' $DA_RPC
+#BTC | POLYGON | CELESTIA | EIGEN
+echo "POLYGON" $POLYGON
+echo "CELESTIA" $CELESTIA
+echo "EIGEN" $EIGEN
+
+#legacy config
+
 
 if [ "$P2PPORT" == "" ]; then
     P2PPORT=9003
@@ -34,7 +40,7 @@ if [ "$MASTER" == "1" ]; then
     --l1.trustrpc=true \
     --l1.rpckind=basic \
     --l1.epoch-poll-interval=10s \
-    --l1-da-rpc=$DA_RPC \
+    --l1-da-rpc=$POLYGON \
     --log.level info 2>&1 | cronolog $PWD/resources/logs/%Y-%m-%d.log
 else
   ./bin/op-node \
@@ -54,7 +60,7 @@ else
     --l1.trustrpc=true \
     --l1.rpckind=basic \
     --l1.epoch-poll-interval=10s \
-    --l1-da-rpc=$DA_RPC \
+    --l1-da-rpc=$POLYGON \
     --log.level info 2>&1 | cronolog $PWD/resources/logs/%Y-%m-%d.log
 fi
 

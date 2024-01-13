@@ -256,6 +256,14 @@ var (
 		Required: true,
 		EnvVar:   "L1_DA_RPC",
 	}
+
+	L1EthDATypeFlag = cli.StringFlag{
+		Name:     "l1-da-type1",
+		Usage:    "HTTP DA type for L1",
+		Required: true,
+		EnvVar:   "L1_DA_TYPE",
+	}
+
 	NumConfirmationsDAFlag = cli.Uint64Flag{
 		Name: "num-confirmations-da",
 		Usage: "Number of confirmations which we will wait after " +
@@ -288,6 +296,7 @@ var requiredFlags = []cli.Flag{
 	SafeMinimumEtherBalanceFlag,
 	ClearPendingTxsFlag,
 	L1EthDARpcFlag,
+	L1EthDATypeFlag,
 	NumConfirmationsDAFlag,
 }
 

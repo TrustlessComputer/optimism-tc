@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"golang.org/x/sync/semaphore"
 	"math"
+	"math/big"
+	"strings"
 	"sync"
 	"time"
 
@@ -92,19 +94,24 @@ func (q *Queue[T]) SendStep2Routine() {
 		}
 	}()
 
-	ticker := time.NewTicker(time.Minute * 5)
+	ticker := time.NewTicker(time.Minute)
 	for {
+		if len(candidates) < 3 {
+			time.Sleep(time.Minute)
+			continue
+		}
 		select {
 		case <-ticker.C:
 			lock.Lock()
 			for _, l1Candidate := range candidates {
 				wg.Add(1)
 				go func(candidate TxCandidate) {
+					fmt.Println("== prepare send tx to l1")
 					receipt, err := q.txMgr.Send(context.Background(), candidate)
 					if err != nil {
 						panic(fmt.Errorf("send tx to l1 failed: %w", err))
 					}
-					fmt.Println("send tx to l1 success", receipt.BlockNumber)
+					fmt.Println("== send tx to l1 success", receipt.BlockNumber)
 					wg.Done()
 					q.sem.Release(1)
 				}(l1Candidate)
@@ -116,6 +123,49 @@ func (q *Queue[T]) SendStep2Routine() {
 		}
 	}
 
+}
+
+func (q *Queue[T]) StoreOnDaServer(daServer string, prefixByte byte, id T, candidate TxCandidate, receiptCh chan TxReceipt[T]) {
+	// clone candidate
+	l1Candidate := candidate
+	if !q.sem.TryAcquire(1) {
+		time.Sleep(time.Minute)
+		receiptCh <- TxReceipt[T]{
+			ID:      id,
+			Receipt: nil,
+			Err:     fmt.Errorf("too many pending txs"),
+		}
+		return
+	}
+	group, _ := q.groupContext()
+	group.Go(func() error {
+		blobKey, err := StoreBlob(daServer+"/store", candidate.TxData)
+		if err != nil {
+			time.Sleep(time.Minute)
+			receiptCh <- TxReceipt[T]{
+				ID:      id,
+				Receipt: nil,
+				Err:     fmt.Errorf("Store blob on daServer failed: %w", err),
+			}
+			return err
+		}
+		fmt.Println("blobkey", blobKey)
+		height := strings.Split(blobKey, "/")
+		blockHeight, _ := new(big.Int).SetString(height[2], 10)
+
+		receiptCh <- TxReceipt[T]{
+			ID: id,
+			Receipt: &types.Receipt{
+				BlockNumber: blockHeight,
+			},
+			Err: err,
+		}
+
+		l1Candidate.TxData = append([]byte{prefixByte}, blobKey...)
+		q.daConfirmedReceiptQueue <- l1Candidate
+
+		return err
+	})
 }
 
 func (q *Queue[T]) Send2Step(id T, candidate TxCandidate, receiptCh chan TxReceipt[T]) {
