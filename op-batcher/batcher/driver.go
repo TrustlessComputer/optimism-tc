@@ -424,6 +424,8 @@ func (l *BatchSubmitter) sendTransaction(txdata txData, queue *txmgr.Queue[txDat
 		queue.StoreOnDaServer(os.Getenv("CELESTIA"), 2, txdata, candidate, receiptsCh)
 	} else if l.DaType == "EIGEN" {
 		queue.StoreOnDaServer(os.Getenv("EIGEN"), 3, txdata, candidate, receiptsCh)
+	} else if l.DaType == "NEARDA" {
+		queue.StoreOnDaServer(os.Getenv("NEARDA"), 4, txdata, candidate, receiptsCh)
 	} else {
 		l.log.Error("No DA type specified")
 		return
