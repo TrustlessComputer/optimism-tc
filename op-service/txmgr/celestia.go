@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 )
 
 func StoreBlob(url string, data []byte) (string, error) {
@@ -34,7 +35,9 @@ func StoreBlob(url string, data []byte) (string, error) {
 	req.Header.Set("Content-Type", "application/json")
 
 	// Send the request using http.Client
-	client := &http.Client{}
+	client := &http.Client{
+		Timeout: time.Second * 120, // Set the timeout to 10 seconds
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", err
@@ -62,7 +65,9 @@ func GetBlob(url string) ([]byte, error) {
 	}
 
 	// Send the request using http.Client
-	client := &http.Client{}
+	client := &http.Client{
+		Timeout: time.Second * 60, // Set the timeout to 10 seconds
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
