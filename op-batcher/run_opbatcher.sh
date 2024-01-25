@@ -22,6 +22,7 @@ echo "DA_TYPE" $DA_TYPE
 echo "POLYGON" $POLYGON
 echo "CELESTIA" $CELESTIA
 echo "EIGEN" $EIGEN
+echo "NEARDA" $NEARDA
 
 
 ./bin/op-batcher \
