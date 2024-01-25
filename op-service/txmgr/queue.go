@@ -6,7 +6,6 @@ import (
 	"golang.org/x/sync/semaphore"
 	"math"
 	"math/big"
-	"strings"
 	"sync"
 	"time"
 
@@ -150,9 +149,8 @@ func (q *Queue[T]) StoreOnDaServer(daServer string, prefixByte byte, id T, candi
 			return err
 		}
 		fmt.Println("blobkey", blobKey)
-		height := strings.Split(blobKey, "/")
-		blockHeight, _ := new(big.Int).SetString(height[2], 10)
 
+		blockHeight := big.NewInt(time.Now().Unix() / 600)
 		receiptCh <- TxReceipt[T]{
 			ID: id,
 			Receipt: &types.Receipt{

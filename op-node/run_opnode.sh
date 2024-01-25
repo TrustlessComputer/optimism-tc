@@ -6,6 +6,7 @@ echo "TCHOST" $TCHOST
 echo "POLYGON" $POLYGON
 echo "CELESTIA" $CELESTIA
 echo "EIGEN" $EIGEN
+echo "NEARDA" $NEARDA
 
 #legacy config
 

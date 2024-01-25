@@ -166,6 +166,25 @@ func NewDataSource(ctx context.Context, log log.Logger, cfg *rollup.Config, fetc
 					}
 				}
 			}
+			if data[0] == 0x04 {
+				blobKey := txHash
+				daServer := os.Getenv("NEARDA")
+				fmt.Println("NEARDA 1", string(blobKey), "daServer", daServer)
+				data, err := txmgr.GetBlob(daServer + "/get" + string(blobKey))
+				if err == nil {
+					log.Info("retrieved data from calldata source", "data", data, "len", len(data))
+					resultData = append(resultData, data)
+				} else {
+					return &DataSource{
+						open:        false,
+						id:          block,
+						cfg:         cfg,
+						fetcher:     fetcher,
+						log:         log,
+						batcherAddr: batcherAddr,
+					}
+				}
+			}
 
 		}
 
@@ -222,6 +241,18 @@ func (ds *DataSource) Next(ctx context.Context) (eth.Data, error) {
 					blobKey := txHash
 					daServer := os.Getenv("EIGEN")
 					fmt.Println("EIGEN 2", string(blobKey), "rpc", daServer)
+					data, err := txmgr.GetBlob(daServer + "/get" + string(blobKey))
+					if err == nil {
+						log.Info("retrieved data from calldata source", "data", data, "len", len(data))
+						resultData = append(resultData, data)
+					} else {
+						return nil, NewTemporaryError(fmt.Errorf("failed to retrieve data from daServer calldata source: %w", err))
+					}
+				}
+				if data[0] == 4 {
+					blobKey := txHash
+					daServer := os.Getenv("NEARDA")
+					fmt.Println("NEARDA 2", string(blobKey), "rpc", daServer)
 					data, err := txmgr.GetBlob(daServer + "/get" + string(blobKey))
 					if err == nil {
 						log.Info("retrieved data from calldata source", "data", data, "len", len(data))
