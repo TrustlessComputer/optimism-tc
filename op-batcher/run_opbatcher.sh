@@ -36,7 +36,7 @@ echo "EIGEN" $EIGEN
       --rpc.addr=0.0.0.0 \
       --rpc.port=8548 \
       --rpc.enable-admin \
-      --max-channel-duration=1 \
+      --max-channel-duration=9 \
       --l1-eth-rpc=$TCHOST \
       --log.level=debug \
       --l1-da-rpc=$POLYGON \
