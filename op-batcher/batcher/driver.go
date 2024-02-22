@@ -58,7 +58,7 @@ func NewBatchSubmitterFromCLIConfig(cfg CLIConfig, l log.Logger, m metrics.Metri
 	}
 
 	var l1DAClient *ethclient.Client
-	if cfg.L1EthDAType != "CELESTIA" && cfg.L1EthDAType != "EIGEN" {
+	if cfg.L1EthDAType == "BTC" || cfg.L1EthDAType == "POLYGON" {
 		l1DAClient, err = opclient.DialEthClientWithTimeout(ctx, cfg.L1EthDARpc, opclient.DefaultDialTimeout)
 		if err != nil {
 			return nil, err
@@ -86,7 +86,7 @@ func NewBatchSubmitterFromCLIConfig(cfg CLIConfig, l log.Logger, m metrics.Metri
 	}
 
 	var txdaManager *txmgr.SimpleTxManager
-	if cfg.L1EthDAType != "CELESTIA" && cfg.L1EthDAType != "EIGEN" {
+	if cfg.L1EthDAType == "BTC" || cfg.L1EthDAType == "POLYGON" {
 		txdaManager, err = txmgr.NewSimpleTxManager("batcher", l, m, cfg.TxDAMgrConfig)
 		if err != nil {
 			return nil, err
@@ -426,6 +426,14 @@ func (l *BatchSubmitter) sendTransaction(txdata txData, queue *txmgr.Queue[txDat
 		queue.StoreOnDaServer(os.Getenv("EIGEN"), 3, txdata, candidate, receiptsCh)
 	} else if l.DaType == "NEARDA" {
 		queue.StoreOnDaServer(os.Getenv("NEARDA"), 4, txdata, candidate, receiptsCh)
+	} else if l.DaType == "IPFS" {
+		queue.StoreOnDaServer(os.Getenv("IPFS"), 5, txdata, candidate, receiptsCh)
+	} else if l.DaType == "ARWEAVE" {
+		queue.StoreOnDaServer(os.Getenv("ARWEAVE"), 6, txdata, candidate, receiptsCh)
+	} else if l.DaType == "AVAIL" {
+		queue.StoreOnDaServer(os.Getenv("AVAIL"), 7, txdata, candidate, receiptsCh)
+	} else if l.DaType == "JACKAL" {
+		queue.StoreOnDaServer(os.Getenv("JACKAL"), 8, txdata, candidate, receiptsCh)
 	} else {
 		l.log.Error("No DA type specified")
 		return

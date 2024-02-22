@@ -126,66 +126,46 @@ func NewDataSource(ctx context.Context, log log.Logger, cfg *rollup.Config, fetc
 					}
 				}
 			}
-
-			if data[0] == 0x02 {
-				blobKey := txHash
+			blobKey := txHash
+			daServer := ""
+			switch data[0] {
+			case 0x02:
 				daServer := os.Getenv("CELESTIA")
 				fmt.Println("CELESTIA 1", string(blobKey), "daServer", daServer)
-				data, err := txmgr.GetBlob(daServer + "/get" + string(blobKey))
-				if err == nil {
-					log.Info("retrieved data from calldata source", "data", data, "len", len(data))
-					resultData = append(resultData, data)
-				} else {
-					return &DataSource{
-						open:        false,
-						id:          block,
-						cfg:         cfg,
-						fetcher:     fetcher,
-						log:         log,
-						batcherAddr: batcherAddr,
-					}
-				}
-			}
-
-			if data[0] == 0x03 {
-				blobKey := txHash
+			case 0x03:
 				daServer := os.Getenv("EIGEN")
 				fmt.Println("EIGEN 1", string(blobKey), "daServer", daServer)
-				data, err := txmgr.GetBlob(daServer + "/get" + string(blobKey))
-				if err == nil {
-					log.Info("retrieved data from calldata source", "data", data, "len", len(data))
-					resultData = append(resultData, data)
-				} else {
-					return &DataSource{
-						open:        false,
-						id:          block,
-						cfg:         cfg,
-						fetcher:     fetcher,
-						log:         log,
-						batcherAddr: batcherAddr,
-					}
-				}
-			}
-			if data[0] == 0x04 {
-				blobKey := txHash
+			case 0x04:
 				daServer := os.Getenv("NEARDA")
 				fmt.Println("NEARDA 1", string(blobKey), "daServer", daServer)
-				data, err := txmgr.GetBlob(daServer + "/get" + string(blobKey))
-				if err == nil {
-					log.Info("retrieved data from calldata source", "data", data, "len", len(data))
-					resultData = append(resultData, data)
-				} else {
-					return &DataSource{
-						open:        false,
-						id:          block,
-						cfg:         cfg,
-						fetcher:     fetcher,
-						log:         log,
-						batcherAddr: batcherAddr,
-					}
-				}
+			case 0x05:
+				daServer = os.Getenv("IPFS")
+				fmt.Println("IPFS 1", string(blobKey), "rpc", daServer)
+			case 0x06:
+				daServer = os.Getenv("ARWEAVE")
+				fmt.Println("ARWEAVE 1", string(blobKey), "rpc", daServer)
+			case 0x07:
+				daServer = os.Getenv("AVAIL")
+				fmt.Println("AVAIL 1", string(blobKey), "rpc", daServer)
+			case 0x08:
+				daServer = os.Getenv("JACKAL")
+				fmt.Println("JACKAL 1", string(blobKey), "rpc", daServer)
 			}
 
+			data, err := txmgr.GetBlob(daServer + "/get" + string(blobKey))
+			if err == nil {
+				log.Info("retrieved data from calldata source", "data", data, "len", len(data))
+				resultData = append(resultData, data)
+			} else {
+				return &DataSource{
+					open:        false,
+					id:          block,
+					cfg:         cfg,
+					fetcher:     fetcher,
+					log:         log,
+					batcherAddr: batcherAddr,
+				}
+			}
 		}
 
 		return &DataSource{
@@ -225,41 +205,37 @@ func (ds *DataSource) Next(ctx context.Context) (eth.Data, error) {
 						return nil, NewTemporaryError(fmt.Errorf("failed to retrieve data from calldata source: %w", err))
 					}
 				}
-				if data[0] == 2 {
-					blobKey := txHash
-					daServer := os.Getenv("CELESTIA")
+				blobKey := txHash
+				daServer := ""
+				switch data[0] {
+				case 2:
+					daServer = os.Getenv("CELESTIA")
 					fmt.Println("CELESTIA 2", string(blobKey), "rpc", daServer)
-					data, err := txmgr.GetBlob(daServer + "/get" + string(blobKey))
-					if err == nil {
-						log.Info("retrieved data from calldata source", "data", data, "len", len(data))
-						resultData = append(resultData, data)
-					} else {
-						return nil, NewTemporaryError(fmt.Errorf("failed to retrieve data from daServer calldata source: %w", err))
-					}
-				}
-				if data[0] == 3 {
-					blobKey := txHash
-					daServer := os.Getenv("EIGEN")
+				case 3:
+					daServer = os.Getenv("EIGEN")
 					fmt.Println("EIGEN 2", string(blobKey), "rpc", daServer)
-					data, err := txmgr.GetBlob(daServer + "/get" + string(blobKey))
-					if err == nil {
-						log.Info("retrieved data from calldata source", "data", data, "len", len(data))
-						resultData = append(resultData, data)
-					} else {
-						return nil, NewTemporaryError(fmt.Errorf("failed to retrieve data from daServer calldata source: %w", err))
-					}
-				}
-				if data[0] == 4 {
-					blobKey := txHash
-					daServer := os.Getenv("NEARDA")
+				case 4:
+					daServer = os.Getenv("NEARDA")
 					fmt.Println("NEARDA 2", string(blobKey), "rpc", daServer)
-					data, err := txmgr.GetBlob(daServer + "/get" + string(blobKey))
-					if err == nil {
-						log.Info("retrieved data from calldata source", "data", data, "len", len(data))
-						resultData = append(resultData, data)
-					} else {
-						return nil, NewTemporaryError(fmt.Errorf("failed to retrieve data from daServer calldata source: %w", err))
-					}
+				case 5:
+					daServer = os.Getenv("IPFS")
+					fmt.Println("IPFS 2", string(blobKey), "rpc", daServer)
+				case 6:
+					daServer = os.Getenv("ARWEAVE")
+					fmt.Println("ARWEAVE 2", string(blobKey), "rpc", daServer)
+				case 7:
+					daServer = os.Getenv("AVAIL")
+					fmt.Println("AVAIL 2", string(blobKey), "rpc", daServer)
+				case 8:
+					daServer = os.Getenv("JACKAL")
+					fmt.Println("JACKAL 2", string(blobKey), "rpc", daServer)
+				}
+				data, err := txmgr.GetBlob(daServer + "/get" + string(blobKey))
+				if err == nil {
+					log.Info("retrieved data from calldata source", "data", data, "len", len(data))
+					resultData = append(resultData, data)
+				} else {
+					return nil, NewTemporaryError(fmt.Errorf("failed to retrieve data from daServer calldata source: %w", err))
 				}
 			}
 			ds.data = resultData
