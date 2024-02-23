@@ -146,6 +146,7 @@ func (q *Queue[T]) StoreOnDaServer(daServer string, prefixByte byte, id T, candi
 				Receipt: nil,
 				Err:     fmt.Errorf("Store blob on daServer failed: %w", err),
 			}
+			q.sem.Release(1)
 			return err
 		}
 		fmt.Println("blobkey", blobKey)
