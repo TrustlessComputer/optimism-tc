@@ -186,6 +186,45 @@ func NewDataSource(ctx context.Context, log log.Logger, cfg *rollup.Config, fetc
 				}
 			}
 
+			if data[0] == 0x05 {
+				blobKey := txHash
+				daServer := os.Getenv("FILECOIN")
+				fmt.Println("FILECOIN 1", string(blobKey), "daServer", daServer)
+				data, err := txmgr.GetBlob(daServer + "/get" + string(blobKey))
+				if err == nil {
+					log.Info("retrieved data from calldata source", "data", data, "len", len(data))
+					resultData = append(resultData, data)
+				} else {
+					return &DataSource{
+						open:        false,
+						id:          block,
+						cfg:         cfg,
+						fetcher:     fetcher,
+						log:         log,
+						batcherAddr: batcherAddr,
+					}
+				}
+			}
+
+			if data[0] == 0x06 {
+				blobKey := txHash
+				daServer := os.Getenv("SYSCOIN")
+				fmt.Println("SYSCOIN 1", string(blobKey), "daServer", daServer)
+				data, err := txmgr.GetBlob(daServer + "/get" + string(blobKey))
+				if err == nil {
+					log.Info("retrieved data from calldata source", "data", data, "len", len(data))
+					resultData = append(resultData, data)
+				} else {
+					return &DataSource{
+						open:        false,
+						id:          block,
+						cfg:         cfg,
+						fetcher:     fetcher,
+						log:         log,
+						batcherAddr: batcherAddr,
+					}
+				}
+			}
 		}
 
 		return &DataSource{
@@ -253,6 +292,30 @@ func (ds *DataSource) Next(ctx context.Context) (eth.Data, error) {
 					blobKey := txHash
 					daServer := os.Getenv("NEARDA")
 					fmt.Println("NEARDA 2", string(blobKey), "rpc", daServer)
+					data, err := txmgr.GetBlob(daServer + "/get" + string(blobKey))
+					if err == nil {
+						log.Info("retrieved data from calldata source", "data", data, "len", len(data))
+						resultData = append(resultData, data)
+					} else {
+						return nil, NewTemporaryError(fmt.Errorf("failed to retrieve data from daServer calldata source: %w", err))
+					}
+				}
+				if data[0] == 5 {
+					blobKey := txHash
+					daServer := os.Getenv("FILECOIN")
+					fmt.Println("FILECOIN 2", string(blobKey), "rpc", daServer)
+					data, err := txmgr.GetBlob(daServer + "/get" + string(blobKey))
+					if err == nil {
+						log.Info("retrieved data from calldata source", "data", data, "len", len(data))
+						resultData = append(resultData, data)
+					} else {
+						return nil, NewTemporaryError(fmt.Errorf("failed to retrieve data from daServer calldata source: %w", err))
+					}
+				}
+				if data[0] == 6 {
+					blobKey := txHash
+					daServer := os.Getenv("SYSCOIN")
+					fmt.Println("SYSCOIN 2", string(blobKey), "rpc", daServer)
 					data, err := txmgr.GetBlob(daServer + "/get" + string(blobKey))
 					if err == nil {
 						log.Info("retrieved data from calldata source", "data", data, "len", len(data))
