@@ -150,6 +150,12 @@ func NewDataSource(ctx context.Context, log log.Logger, cfg *rollup.Config, fetc
 			case 0x08:
 				daServer = os.Getenv("JACKAL")
 				fmt.Println("JACKAL 1", string(blobKey), "rpc", daServer)
+			case 0x09:
+				daServer = os.Getenv("FILECOIN")
+				fmt.Println("FILECOIN 2", string(blobKey), "rpc", daServer)
+			case 0x0a:
+				daServer = os.Getenv("SYSCOIN")
+				fmt.Println("SYSCOIN 2", string(blobKey), "rpc", daServer)
 			}
 
 			data, err := txmgr.GetBlob(daServer + "/get" + string(blobKey))
@@ -229,6 +235,12 @@ func (ds *DataSource) Next(ctx context.Context) (eth.Data, error) {
 				case 8:
 					daServer = os.Getenv("JACKAL")
 					fmt.Println("JACKAL 2", string(blobKey), "rpc", daServer)
+				case 9:
+					daServer = os.Getenv("FILECOIN")
+					fmt.Println("FILECOIN 2", string(blobKey), "rpc", daServer)
+				case 10:
+					daServer = os.Getenv("SYSCOIN")
+					fmt.Println("SYSCOIN 2", string(blobKey), "rpc", daServer)
 				}
 				data, err := txmgr.GetBlob(daServer + "/get" + string(blobKey))
 				if err == nil {

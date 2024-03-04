@@ -17,13 +17,14 @@ if [ "$DA_TYPE" == "BTC" ]; then
     DACONFIRM=1
 fi
 
-#BTC | POLYGON | CELESTIA | EIGEN
+#BTC | POLYGON | CELESTIA | EIGEN | FILECOIN | SYSCOIN
 echo "DA_TYPE" $DA_TYPE
 echo "POLYGON" $POLYGON
 echo "CELESTIA" $CELESTIA
 echo "EIGEN" $EIGEN
 echo "NEARDA" $NEARDA
-
+echo "FILECOIN" $FILECOIN
+echo "SYSCOIN" $SYSCOIN
 
 ./bin/op-batcher \
       --l2-eth-rpc=$GETH_HOST \

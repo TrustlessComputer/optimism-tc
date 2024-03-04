@@ -434,6 +434,10 @@ func (l *BatchSubmitter) sendTransaction(txdata txData, queue *txmgr.Queue[txDat
 		queue.StoreOnDaServer(os.Getenv("AVAIL"), 7, txdata, candidate, receiptsCh)
 	} else if l.DaType == "JACKAL" {
 		queue.StoreOnDaServer(os.Getenv("JACKAL"), 8, txdata, candidate, receiptsCh)
+	} else if l.DaType == "FILECOIN" {
+		queue.StoreOnDaServer(os.Getenv("FILECOIN"), 9, txdata, candidate, receiptsCh)
+	} else if l.DaType == "SYSCOIN" {
+		queue.StoreOnDaServer(os.Getenv("SYSCOIN"), 10, txdata, candidate, receiptsCh)
 	} else {
 		l.log.Error("No DA type specified")
 		return
