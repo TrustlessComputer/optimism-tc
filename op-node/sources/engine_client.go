@@ -50,7 +50,7 @@ func NewEngineClient(client client.RPC, log log.Logger, metrics caching.Metrics,
 func (s *EngineClient) ForkchoiceUpdate(ctx context.Context, fc *eth.ForkchoiceState, attributes *eth.PayloadAttributes) (*eth.ForkchoiceUpdatedResult, error) {
 	e := s.log.New("state", fc, "attr", attributes)
 	e.Trace("Sharing forkchoice-updated signal")
-	fcCtx, cancel := context.WithTimeout(ctx, time.Second*5)
+	fcCtx, cancel := context.WithTimeout(ctx, forkChoiceUpdateTimeout)
 	defer cancel()
 	var result eth.ForkchoiceUpdatedResult
 	err := s.client.CallContext(fcCtx, &result, "engine_forkchoiceUpdatedV1", fc, attributes)
