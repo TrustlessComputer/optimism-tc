@@ -103,6 +103,7 @@ func (s *SendState) ShouldAbortImmediately() bool {
 		return false
 	}
 
+	println("ShouldAbortImmediately", "nonceTooLowCount", s.nonceTooLowCount, "safeAbortNonceTooLowCount", s.safeAbortNonceTooLowCount, "successFullPublishCount", s.successFullPublishCount, "txInMempoolDeadline", s.now().Sub(s.txInMempoolDeadline))
 	// If we have exceeded the nonce too low count, abort
 	if s.nonceTooLowCount >= s.safeAbortNonceTooLowCount ||
 		// If we have not published a transaction in the allotted time, abort
