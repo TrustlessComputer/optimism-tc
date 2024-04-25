@@ -3,7 +3,9 @@ package txmgr
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/big"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"time"
@@ -114,7 +116,8 @@ func (m *SimpleTxManager) Send(
 	updateGasPrice UpdateGasPriceFunc,
 	sendTx SendTransactionFunc,
 ) (*types.Receipt, error) {
-
+	
+	fmt.Println("SimpleTxManager send tx", string(debug.Stack()))
 	name := m.name
 
 	// Initialize a wait group to track any spawned goroutines, and ensure
