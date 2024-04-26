@@ -49,7 +49,7 @@ func StoreBlob(url string, data []byte) (string, error) {
 		return "", err
 	}
 	if resp.Status != "200 OK" {
-		fmt.Println("error  when read body response from da code ", resp.Status, "body", body)
+		fmt.Println("error  when read body response from da code ", resp.Status, "body", string(body))
 		return "", fmt.Errorf("Error: %s", resp.Status)
 	}
 	// Read the response body
