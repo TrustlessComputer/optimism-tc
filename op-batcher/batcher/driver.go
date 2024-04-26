@@ -341,6 +341,11 @@ func (l *BatchSubmitter) loop() {
 // publishStateToL1 loops through the block data loaded into `state` and
 // submits the associated data to the L1 in the form of channel frames.
 func (l *BatchSubmitter) publishStateToL1(queue *txmgr.Queue[txData], receiptsCh chan txmgr.TxReceipt[txData], drain bool) {
+	start := time.Now()
+	defer func() {
+		duration := time.Since(start)
+		fmt.Println("Batch Submitter time publishStateToL1", duration)
+	}()
 	txDone := make(chan struct{})
 	// send/wait and receipt reading must be on a separate goroutines to avoid deadlocks
 	go func() {
@@ -374,6 +379,11 @@ func (l *BatchSubmitter) publishStateToL1(queue *txmgr.Queue[txData], receiptsCh
 
 // publishTxToL1 submits a single state tx to the L1
 func (l *BatchSubmitter) publishTxToL1(ctx context.Context, queue *txmgr.Queue[txData], receiptsCh chan txmgr.TxReceipt[txData]) error {
+	start := time.Now()
+	defer func() {
+		duration := time.Since(start)
+		fmt.Println("Batch Submitter time publishTxToL1", duration)
+	}()
 	// send all available transactions
 	l1tip, err := l.l1Tip(ctx)
 	if err != nil {
@@ -400,6 +410,11 @@ func (l *BatchSubmitter) publishTxToL1(ctx context.Context, queue *txmgr.Queue[t
 // It currently uses the underlying `txmgr` to handle transaction sending & price management.
 // This is a blocking method. It should not be called concurrently.
 func (l *BatchSubmitter) sendTransaction(txdata txData, queue *txmgr.Queue[txData], receiptsCh chan txmgr.TxReceipt[txData]) {
+	start := time.Now()
+	defer func() {
+		duration := time.Since(start)
+		fmt.Println("Batch Submitter time sendTransaction", duration, "len", txdata.ID().String())
+	}()
 	// Do the gas estimation offline. A value of 0 will cause the [txmgr] to estimate the gas limit.
 	data := txdata.Bytes()
 	intrinsicGas, err := core.IntrinsicGas(data, nil, false, true, true, false)

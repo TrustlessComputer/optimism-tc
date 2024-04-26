@@ -11,6 +11,11 @@ import (
 )
 
 func StoreBlob(url string, data []byte) (string, error) {
+	start := time.Now()
+	defer func() {
+		duration := time.Since(start)
+		fmt.Println("da store data time process", duration, "len", len(data))
+	}()
 	//base64 encode data
 	base64Data := base64.StdEncoding.EncodeToString(data)
 
