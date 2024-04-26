@@ -217,7 +217,6 @@ func (l *BatchSubmitter) loadBlocksIntoState(ctx context.Context) error {
 	} else if start.Number >= end.Number {
 		return errors.New("start number is >= end number")
 	}
-	end.Number = start.Number + 100
 	var latestBlock *types.Block
 	// Add all blocks to "state"
 	for i := start.Number + 1; i < end.Number+1; i++ {
