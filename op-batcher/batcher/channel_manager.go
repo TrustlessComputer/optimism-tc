@@ -291,13 +291,25 @@ func (s *channelManager) processBlocks() error {
 		len(s.blocks),
 		s.pendingChannel.InputBytes(),
 		s.pendingChannel.ReadyBytes())
-	s.log.Debug("Added blocks to channel",
-		"blocks_added", blocksAdded,
-		"blocks_pending", len(s.blocks),
-		"channel_full", s.pendingChannel.IsFull(),
-		"input_bytes", s.pendingChannel.InputBytes(),
-		"ready_bytes", s.pendingChannel.ReadyBytes(),
-	)
+	if len(s.blocks) > 0 {
+		s.log.Debug("Added blocks to channel",
+			"blocks_added", blocksAdded,
+			"start", s.blocks[0].Number(),
+			"blocks_pending", len(s.blocks),
+			"channel_full", s.pendingChannel.IsFull(),
+			"input_bytes", s.pendingChannel.InputBytes(),
+			"ready_bytes", s.pendingChannel.ReadyBytes(),
+		)
+	} else {
+		s.log.Debug("Added blocks to channel",
+			"blocks_added", blocksAdded,
+			"blocks_pending", len(s.blocks),
+			"channel_full", s.pendingChannel.IsFull(),
+			"input_bytes", s.pendingChannel.InputBytes(),
+			"ready_bytes", s.pendingChannel.ReadyBytes(),
+		)
+	}
+
 	return nil
 }
 
