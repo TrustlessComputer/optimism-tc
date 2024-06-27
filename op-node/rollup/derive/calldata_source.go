@@ -85,10 +85,7 @@ func NewDataSource(ctx context.Context, log log.Logger, cfg *rollup.Config, fetc
 			txHash := data[1:]
 			if data[0] == 0x00 {
 				resultData = append(resultData, data[1:])
-				return &DataSource{
-					open: true,
-					data: resultData,
-				}
+				continue
 			}
 
 			if data[0] == 0x01 {
@@ -115,6 +112,7 @@ func NewDataSource(ctx context.Context, log log.Logger, cfg *rollup.Config, fetc
 					}
 					log.Info("retrieved data from calldata source", "data", data, "len", len(data))
 					resultData = append(resultData, data)
+					continue
 				} else {
 					return &DataSource{
 						open:        false,
@@ -126,6 +124,7 @@ func NewDataSource(ctx context.Context, log log.Logger, cfg *rollup.Config, fetc
 					}
 				}
 			}
+
 			blobKey := txHash
 			daServer := ""
 			switch data[0] {
@@ -162,6 +161,7 @@ func NewDataSource(ctx context.Context, log log.Logger, cfg *rollup.Config, fetc
 			if err == nil {
 				log.Info("retrieved data from calldata source", "data", data, "len", len(data))
 				resultData = append(resultData, data)
+				continue
 			} else {
 				return &DataSource{
 					open:        false,
@@ -207,10 +207,12 @@ func (ds *DataSource) Next(ctx context.Context) (eth.Data, error) {
 
 						log.Info("retrieved data from calldata source", "data", data, "len", len(data))
 						resultData = append(resultData, data)
+						continue
 					} else {
 						return nil, NewTemporaryError(fmt.Errorf("failed to retrieve data from calldata source: %w", err))
 					}
 				}
+
 				blobKey := txHash
 				daServer := ""
 				switch data[0] {
