@@ -1,4 +1,4 @@
-## Optimistic rollups
+## BVM Optimistic rollups
 Bitcoin, scaled. NOS is a fast, stable, and scalable Bitcoin L2 blockchain.
 
 ## Introduction
