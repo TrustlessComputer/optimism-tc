@@ -1,3 +1,95 @@
+## Optimistic rollups
+Bitcoin, scaled. NOS is a fast, stable, and scalable Bitcoin L2 blockchain.
+
+## Introduction
+By bringing smart contracts to Bitcoin, Bitcoin Virtual Machine lets developers create DEX, DAO, tokens, data storage, and many other use cases on Bitcoin. However, the biggest challenge is Bitcoin's 10-min block time.
+
+Increasing Bitcoin capability in terms of speed is fundamental to the mass adoption of decentralized applications on Bitcoin. 
+
+The main goal of NOS (or "Nitrous Oxide") is to turbocharge Bitcoin transactions (reduce transaction latency) without sacrificing decentralization or security.
+
+## Architecture
+
+NOS reuses the battle-tested [Optimism](https://www.optimism.io/) codebase. It is a modified version of the OP Stack that adds support for Bitcoin.
+
+Like Optimism, NOS uses [Optimistic Rollup](https://ethereum.org/en/developers/docs/scaling/optimistic-rollups/), a fancy way of describing a blockchain that piggybacks off the security of another blockchain. 
+
+In this case, NOS takes advantage of the consensus mechanism of Bitcoin instead of its own. This is possible thanks to the Bitcoin Virtual Machine protocol, which brings smart contract capability to Bitcoin.
+
+
+![image](https://github.com/user-attachments/assets/8163d702-8037-432f-a297-b02fddd53390)
+
+
+## LAYER 1
+
+### Data Validation
+
+Implementation: [The Bitcoin Network](https://bitcoin.org/)
+
+The foundation of the NOS software stack is the Data Validation component. This component significantly impacts the security model of the whole stack. Everything else in the entire stack is derived from the Data Validation component.
+
+### Data Availability: 
+
+Implementation: [The Polygon Network](https://polygon.technology/)
+
+For pragmatic reasons, NOS currently stores data on both Bitcoin and Polygon. Bitcoin is arguably the most secure blockchain. NOS stores the data hash on Bitcoin. Polygon is the most cost-effective storage solution. NOS stores the data (compressed transactions) on Polygon.
+
+### Smart Contract Platform
+
+Implementation: [Bitcoin Virtual Machine #0](https://app.gitbook.com/o/DdijnhtYTqqFeSsljskY/s/4LrpKdKCJA4rekyqoMPj/bitcoin-chains/shards-wip/case-study-op_evm-shard/bitcoin-virtual-machine-0)
+
+Bitcoin Virtual Machine #0 is a special computer. It is a modified version of the EVM that adds smart contracts to Bitcoin. Bitcoin Virtual Machine #0 is used to glue all the components of the NOS software stack together.
+
+
+## LAYER 2
+### Sequencer
+
+Implementation: [op-batcher](https://github.com/TrustlessComputer/optimism-tc/tree/master/op-batcher)
+
+A sequencer (block producer) determines how transactions are collected and published to Layer 1. The sequencer compresses transactions into batches and writes these batches to Polygon, and writes the hash to Bitcoin via Bitcoin Virtual Machine to ensure data availability and integrity.
+
+NOS blocks are currently produced every 2 seconds.
+
+![image](https://github.com/user-attachments/assets/29945761-9392-4ccb-9aea-1a6f482b8b47)
+
+### Rollup Node
+
+Implementation: [op-node](https://github.com/TrustlessComputer/optimism-tc/tree/master/op-node)
+
+The Rollup node defines how the raw data stored in the Data Availability component (Polygon) is processed to form the inputs for the Execution Engine.
+This is also referred to as the Derivation component, which derives the L2 blocks from the L1 blocks.
+
+### Execution Engine
+
+Implementation: [op-geth](https://github.com/TrustlessComputer/opgeth-tc)
+
+The Execution Engine defines the state transition function. It takes inputs from the Rollup node, executes on the current state, and outputs the new state.
+op-geth is a modified version of the EVM that adds support for L2 transactions.
+
+### Settlement
+
+Implementation: [op-proposer](https://github.com/TrustlessComputer/optimism-tc/tree/master/op-proposer)
+
+The Settlement component commits the Merkle root of the new state (the output from the Execution Engine) to Bitcoin.
+Note that the state roots are not immediately valid. In an optimistic rollup setup, state commitments are published onto Bitcoin as pending validity for a period (currently, set as 7 days) and subject to challenge.
+The Optimism team is developing the fault-proof process. Once it’s completed, we’ll add it to NOS.
+
+![image](https://github.com/user-attachments/assets/e2395749-82fa-43e2-bab2-5d0e8322eaa7)
+
+## GOVERNANCE LAYER
+
+### Token
+
+Implementation: NOS as a BRC-20 token
+
+NOS is the governance token to decentralize decision-making.
+
+### DAO
+
+Implementation: Under development
+
+The NOS DAO manages NOS configurations, upgrades, design decisions, development grants, etc.
+
 ## Directory Structure
 
 <pre>
@@ -37,71 +129,6 @@
 └── <a href="./specs">specs</a>: Specs of the rollup starting at the Bedrock upgrade
 </pre>
 
-## Branching Model
-
-### Active Branches
-
-| Branch          | Status                                                                           |
-| --------------- | -------------------------------------------------------------------------------- |
-| [master](https://github.com/ethereum-optimism/optimism/tree/master/)                   | Accepts PRs from `develop` when intending to deploy to production.                  |
-| [develop](https://github.com/ethereum-optimism/optimism/tree/develop/)                 | Accepts PRs that are compatible with `master` OR from `release/X.X.X` branches.                    |
-| release/X.X.X                                                                          | Accepts PRs for all changes, particularly those not backwards compatible with `develop` and `master`. |
-
-### Overview
-
-This repository generally follows [this Git branching model](https://nvie.com/posts/a-successful-git-branching-model/).
-Please read the linked post if you're planning to make frequent PRs into this repository.
-
-### Production branch
-
-The production branch is `master`.
-The `master` branch contains the code for latest "stable" releases.
-Updates from `master` **always** come from the `develop` branch.
-
-### Development branch
-
-The primary development branch is [`develop`](https://github.com/ethereum-optimism/optimism/tree/develop/).
-`develop` contains the most up-to-date software that remains backwards compatible with the latest experimental [network deployments](https://community.optimism.io/docs/useful-tools/networks/).
-If you're making a backwards compatible change, please direct your pull request towards `develop`.
-
-**Changes to contracts within `packages/contracts/contracts` are usually NOT considered backwards compatible and SHOULD be made against a release candidate branch**.
-Some exceptions to this rule exist for cases in which we absolutely must deploy some new contract after a release candidate branch has already been fully deployed.
-If you're changing or adding a contract and you're unsure about which branch to make a PR into, default to using the latest release candidate branch.
-See below for info about release candidate branches.
-
-### Release candidate branches
-
-Branches marked `release/X.X.X` are **release candidate branches**.
-Changes that are not backwards compatible and all changes to contracts within `packages/contracts/contracts` MUST be directed towards a release candidate branch.
-Release candidates are merged into `develop` and then into `master` once they've been fully deployed.
-We may sometimes have more than one active `release/X.X.X` branch if we're in the middle of a deployment.
-See table in the **Active Branches** section above to find the right branch to target.
-
-## Releases
-
-### Changesets
-
-We use [changesets](https://github.com/changesets/changesets) to mark packages for new releases.
-When merging commits to the `develop` branch you MUST include a changeset file if your change would require that a new version of a package be released.
-
-To add a changeset, run the command `yarn changeset` in the root of this monorepo.
-You will be presented with a small prompt to select the packages to be released, the scope of the release (major, minor, or patch), and the reason for the release.
-Comments within changeset files will be automatically included in the changelog of the package.
-
-### Triggering Releases
-
-Releases can be triggered using the following process:
-
-1. Create a PR that merges the `develop` branch into the `master` branch.
-2. Wait for the auto-generated `Version Packages` PR to be opened (may take several minutes).
-3. Change the base branch of the auto-generated `Version Packages` PR from `master` to `develop` and merge into `develop`.
-4. Create a second PR to merge the `develop` branch into the `master` branch.
-
-After merging the second PR into the `master` branch, packages will be automatically released to their respective locations according to the set of changeset files in the `develop` branch at the start of the process.
-Please carry this process out exactly as listed to avoid `develop` and `master` falling out of sync.
-
-**NOTE**: PRs containing changeset files merged into `develop` during the release process can cause issues with changesets that can require manual intervention to fix.
-It's strongly recommended to avoid merging PRs into develop during an active release.
 
 ## License
 
