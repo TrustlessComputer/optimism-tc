@@ -36,7 +36,7 @@ For pragmatic reasons, NOS currently stores data on both Bitcoin and Polygon. Bi
 
 ### Smart Contract Platform
 
-Implementation: [Bitcoin Virtual Machine #0](https://app.gitbook.com/o/DdijnhtYTqqFeSsljskY/s/4LrpKdKCJA4rekyqoMPj/bitcoin-chains/shards-wip/case-study-op_evm-shard/bitcoin-virtual-machine-0)
+Implementation: [Bitcoin Virtual Machine #0](https://docs.bvm.network/bvm/bitcoin-chains/shards-wip/case-study-op_evm-shard)
 
 Bitcoin Virtual Machine #0 is a special computer. It is a modified version of the EVM that adds smart contracts to Bitcoin. Bitcoin Virtual Machine #0 is used to glue all the components of the NOS software stack together.
 
